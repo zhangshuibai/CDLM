@@ -77,7 +77,7 @@ bash examples/test_human-eval_open-dllm.sh
 You can modify the following parameters in the example scripts:
 
 - **`MODEL_NAME`**: HuggingFace model identifier (e.g., `GSAI-ML/LLaDA-8B-Base`)
-- **`DATASET`**: Evaluation dataset (`human-eval`, `human-eval+`, `mbpp+`)
+- **`DATASET`**: Evaluation dataset (`human-eval`, `human-eval+`, `mbpp`,`mbpp+`)
 - **`ERROR_TYPE`**: Type of corruption to inject
   - `operator`: Arithmetic/logical operator substitution
   - `var`: Identifier substitution (variable/function names)

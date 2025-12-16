@@ -1,0 +1,17 @@
+# Core Dependencies
+torch>=2.0.0
+transformers>=4.30.0
+datasets>=2.10.0
+evaluate>=0.4.0
+
+# Code Formatting
+autopep8>=2.0.0
+
+# Utilities
+tqdm>=4.65.0
+
+# Note: This repository supports multiple models:
+# - LLaDA models (default)
+# - Dream models
+# - Open-dLLM models (requires veomni, not included here)
+

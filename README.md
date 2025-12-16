@@ -10,7 +10,7 @@
 </div>
 
 <p align="center">
-  <img src="figures/CRB_pipeline.png" alt="CRB Pipeline" width="800"/>
+  <img src="figures/CRB_pipeline.png" alt="CRB Pipeline" width="400"/>
   <br>
   <em>Figure: Code Revision Benchmark (CRB) pipeline</em>
 </p>

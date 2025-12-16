@@ -13,8 +13,6 @@
 
 <sup>1</sup>University of Wisconsin–Madison &nbsp;&nbsp; <sup>2</sup>Duke University
 
-**Correspondence**: Shuibai Zhang <shuibai@cs.wisc.edu>
-
 <p align="center">
   <table>
     <tr>
@@ -235,4 +233,6 @@ If you find this work useful, please cite:
 
 ## Contact
 
-For questions and issues, please open an issue on GitHub or contact the authors.
+For questions and issues, please open an issue on GitHub or contact:
+
+**Shuibai Zhang** <shuibai@cs.wisc.edu>

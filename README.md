@@ -2,7 +2,7 @@
 
 # CDLM: Corrective Diffusion Language Models
 
-**A research framework for studying and improving self-revision in masked diffusion language models**
+**A research framework for studying and improving self-correction in masked diffusion language models**
 
 [![Paper](https://img.shields.io/badge/Paper-arXiv-red)](https://arxiv.org/abs/XXXX.XXXXX)
 [![Code](https://img.shields.io/badge/Code-GitHub-blue)](https://github.com/zhangshuibai/CDLM)

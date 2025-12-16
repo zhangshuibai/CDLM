@@ -1,5 +1,3 @@
-# CDLM: Corrective Diffusion Language Models
-
 <div align="center">
 
 # CDLM: Corrective Diffusion Language Models
@@ -12,9 +10,9 @@
 </div>
 
 <p align="center">
-  <img src="figures/CRB_pipeline.pdf" alt="CRB Pipeline" width="800"/>
+  <img src="figures/CRB_pipeline.png" alt="CRB Pipeline" width="800"/>
   <br>
-  <em>Figure: Code Revision Benchmark (CRB) pipeline. <a href="figures/CRB_pipeline.pdf">View full PDF</a></em>
+  <em>Figure: Code Revision Benchmark (CRB) pipeline</em>
 </p>
 
 ---

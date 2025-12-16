@@ -98,6 +98,99 @@ You can modify the following parameters in the example scripts:
 - **`ALGORITHM`**: Refinement algorithm (`self_conf-remask:vanilla` for confidence-based remasking)
 - **`CONFIDENCE_THRESHOLD`**: Confidence threshold for remasking decisions (default: `0.90`)
 
+## Controlled Code Corruption (`codecorrection/generate.py`)
+
+The `generate.py` script injects controlled token-level errors into correct code samples, creating a benchmark for evaluating model correction capabilities.
+
+### ⚠️ Important: Tokenizer Dependency
+
+**Different models use different tokenizers**, which tokenize the same code into different token sequences. For example:
+- The operator `>=` may be tokenized as 1 token in some tokenizers, but 2 tokens in others
+- Variable names and numeric literals may also be tokenized into different numbers of tokens
+
+**Therefore, you must use the same tokenizer as the model you will use for evaluation/refinement** when generating error code. This ensures that:
+- Token positions remain consistent throughout the pipeline
+- Error injection aligns with the model's tokenization scheme
+- Refinement can accurately target corrupted tokens
+
+### Pipeline Overview
+
+```
+Load Dataset/File → Extract Correct Code → Tokenize → Inject Errors (Token-level) → 
+Verify Consistency → Generate Multiple Variants → Save as JSONL
+```
+
+### Error Types
+
+The script supports three types of controlled corruption:
+
+1. **`operator`**: Arithmetic/logical operator substitution
+   - Supported operators: `+`, `-`, `*`, `/`, `<`, `>`, `>=`, `<=`, `!=`, `==`, `>>`, `<<`
+   - Operators are grouped by token count to ensure consistent replacement
+
+2. **`var`**: Identifier substitution (variable/function names)
+   - Excludes Python keywords
+   - Only replaces identifiers with the same token count
+
+3. **`literal`**: Numeric literal substitution
+   - Replaces numeric constants (integers and floats)
+   - Maintains token count consistency
+
+### Key Mechanisms
+
+#### Token-Level Replacement
+- All replacements maintain **token count consistency** (e.g., replacing a 2-token variable with another 2-token variable)
+- This ensures the token sequence length remains unchanged, facilitating downstream processing
+
+#### Token Consistency Verification
+- `check_token_consistency()`: Verifies that encoding → decoding → re-encoding produces the same token sequence
+- Prevents token position shifts that could occur due to tokenizer behavior
+- Failed consistency checks result in discarding the corrupted sample
+
+#### Comment Handling
+- Automatically detects and skips operators/variables/literals within comments
+- Uses Python's `tokenize` module to identify comment ranges
+- Ensures errors are only injected into executable code
+
+#### Multi-Variant Generation
+- The `data_num` parameter controls how many corrupted variants are generated per correct sample
+- Each variant uses different random replacements
+- Useful for robust evaluation and statistical analysis
+
+#### Deduplication
+- The `--deduplicate` flag removes duplicate items based on `buggy_body` content
+- Prevents generating identical corrupted code variants
+
+### Usage Example
+
+```bash
+# Generate operator errors using LLaDA tokenizer
+python codecorrection/generate.py \
+    --dataset human-eval \
+    --error_type operator \
+    --n_replace 1 \
+    --data_num 5 \
+    --model_name GSAI-ML/LLaDA-8B-Base \
+    --data_path buggy_datasets
+
+# Generate from existing evaluation results
+python codecorrection/generate.py \
+    --dataset human-eval \
+    --error_type var \
+    --n_replace 1 \
+    --data_num 10 \
+    --model_name GSAI-ML/LLaDA-8B-Base \
+    --input_file evaluated_results.jsonl \
+    --deduplicate
+```
+
+### Important Notes
+
+- ⚠️ **Critical**: The `--model_name` parameter must match the model you will use for subsequent evaluation/refinement
+- Different tokenizers will produce different corrupted code, even for the same original code
+- If there are insufficient replaceable elements in the code, the script may fail to generate the specified number of error variants
+- Certain tasks are automatically excluded (e.g., HumanEval/32, MBPP/342) due to structural issues
+
 ## Project Structure
 
 ```

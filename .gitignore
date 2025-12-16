@@ -29,3 +29,4 @@ Thumbs.db
 venv/
 env/
 ENV/
+examples_local/

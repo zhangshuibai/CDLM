@@ -46,7 +46,7 @@ This repository provides the implementation and evaluation framework for our cor
 - 🎯 **Controlled token-level corruption** (operator, identifier, literal substitutions)
 - 📊 **Confidence–correctness analysis** in remasking decisions
 - 🎓 **Corrective training** with supervision on corrupted-but-visible tokens
-- 📈 **Comprehensive evaluation** on HumanEval, HumanEval+, MBPP, and MBPP+
+- 📈 **Controlled corruption** support for HumanEval, HumanEval+, MBPP, and MBPP+
 
 ## Quick Start
 

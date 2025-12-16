@@ -9,10 +9,9 @@
 
 </div>
 
-**Authors**: Shuibai Zhang<sup>1</sup>, Fred Zhangzhi Peng<sup>2</sup>, Yiheng Zhang<sup>1</sup>, Jin Pan<sup>1</sup>, Grigorios G Chrysos<sup>1</sup>
+**Authors**: [Shuibai Zhang](https://zhangshuibai.github.io/)<sup>1</sup>, [Fred Zhangzhi Peng](https://pengzhangzhi.github.io/home/)<sup>2</sup>, Yiheng Zhang<sup>1</sup>, [Jin Pan](https://jhinpan.github.io/)<sup>1</sup>, [Grigorios G Chrysos](https://grigoris.ece.wisc.edu/about.html)<sup>1</sup>
 
-<sup>1</sup>University of Wisconsin–Madison  
-<sup>2</sup>Duke University
+<sup>1</sup>University of Wisconsin–Madison &nbsp;&nbsp; <sup>2</sup>Duke University
 
 **Correspondence**: Shuibai Zhang <shuibai@cs.wisc.edu>
 

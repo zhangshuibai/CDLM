@@ -1,16 +1,16 @@
 # CDLM: Corrective Diffusion Language Models
 
-A research framework for studying and improving **self-revision in diffusion language models**, with a focus on **error localization, confidence-based remasking, and corrective training**.
+A research framework for studying and improving **self-revision in masked diffusion language models**, with a focus on **error localization, confidence-based refinement, and corrective training**.
 
-The codebase supports controlled code corruption and iterative refinement, enabling systematic evaluation of why standard diffusion LMs fail to correct minimal code errors (e.g., one-token bugs) on benchmarks such as HumanEval.
+The codebase supports controlled code corruption and iterative refinement, enabling systematic evaluation of how well masked diffusion language models can localize and correct errors through self-revision mechanisms.
 
 ## Features
 
 - Iterative code generation and **self-revision** with diffusion language models
-- Controlled semantic corruption (single-token and structured bugs)
+- Controlled token-level corruption
 - Analysis of **confidence–correctness misalignment** in remasking
-- Corrective diffusion training with supervision on corrupted-but-visible tokens
-- Evaluation on HumanEval and revision-focused benchmarks
+- Corrective training with supervision on corrupted-but-visible tokens
+- Supports revision datasets: HumanEval, HumanEval+, MBPP, MBPP+ 
 
 
 ## Quick Start
@@ -19,7 +19,6 @@ The codebase supports controlled code corruption and iterative refinement, enabl
 
 ```bash
 # Clone the repository
-git clone <your-repo-url>
 cd CDLM
 
 # Install dependencies
@@ -28,7 +27,7 @@ pip install -r requirements.txt
 
 ### Usage
 
-Run the example scripts in the `examples/` directory:
+The example scripts run a complete pipeline: code generation → corruption with controlled errors → iterative refinement → evaluation.
 
 ```bash
 # For LLaDA model
@@ -40,6 +39,23 @@ bash examples/test_human-eval_dream.sh
 # For Open-dLLM model
 bash examples/test_human-eval_open-dllm.sh
 ```
+
+### Key Parameters
+
+You can modify the following parameters in the example scripts:
+
+- **`MODEL_NAME`**: HuggingFace model identifier (e.g., `GSAI-ML/LLaDA-8B-Base`)
+- **`DATASET`**: Evaluation dataset (`human-eval`, `human-eval+`, `mbpp+`)
+- **`ERROR_TYPE`**: Type of corruption to inject
+  - `operator`: Arithmetic/logical operator substitution
+  - `var`: Identifier substitution (variable/function names)
+  - `literal`: Constant value substitution
+- **`N_REPLACE`**: Number of tokens to corrupt per sample (default: `1`)
+- **`DATA_NUM`**: Number of corrupted variants to generate per correct sample (default: `5`)
+- **`REFINED_STEPS`**: Number of denoising steps for refinement (starts from `2`; can use `2`, `3`, `4`, `5`, etc.)
+- **`TEMPERATURE`**: Sampling temperature for refinement (default: `0.0` for greedy decoding)
+- **`ALGORITHM`**: Refinement algorithm (`self_conf-remask:vanilla` for confidence-based remasking)
+- **`CONFIDENCE_THRESHOLD`**: Confidence threshold for remasking decisions (default: `0.90`)
 
 ## Project Structure
 

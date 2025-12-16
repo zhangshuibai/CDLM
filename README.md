@@ -20,7 +20,7 @@
       <td align="center">
         <img src="figures/mdlm_train.png" alt="MDLM Training" width="400"/>
         <br>
-        <em>(b) Cross-marked boxes denote masked tokens, while beige tokens are visible inputs. Green outputs indicate masked positions where the reconstruction loss is applied, whereas brown outputs correspond to unmasked tokens that receive no supervision during training.</em>
+        <em>(b) MDLM training. Cross-marked boxes denote masked tokens, while beige tokens are visible inputs. Green outputs indicate masked positions where the reconstruction loss is applied, whereas brown outputs correspond to unmasked tokens that receive no supervision during training.</em>
       </td>
     </tr>
   </table>

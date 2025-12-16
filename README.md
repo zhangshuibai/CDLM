@@ -9,6 +9,13 @@
 
 </div>
 
+**Authors**: Shuibai Zhang<sup>1</sup>, Fred Zhangzhi Peng<sup>2</sup>, Yiheng Zhang<sup>1</sup>, Jin Pan<sup>1</sup>, Grigorios G Chrysos<sup>1</sup>
+
+<sup>1</sup>University of Wisconsin–Madison  
+<sup>2</sup>Duke University
+
+**Correspondence**: Shuibai Zhang <shuibai@cs.wisc.edu>
+
 <p align="center">
   <table>
     <tr>

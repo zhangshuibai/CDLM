@@ -52,9 +52,18 @@ This repository provides the implementation and evaluation framework for our cor
 # Clone the repository
 git clone https://github.com/zhangshuibai/CDLM.git
 cd CDLM
+```
 
-# Install dependencies
-pip install -r requirements.txt
+**Note**: This repository supports multiple diffusion language models. Please refer to the respective model repositories for installation instructions:
+
+- **LLaDA models**: Follow the installation guide at [ML-GSAI/LLaDA](https://github.com/ML-GSAI/LLaDA)
+- **Dream models**: Follow the installation guide at [DreamLM/Dream](https://github.com/DreamLM/Dream.git)
+- **Open-dLLM models**: Follow the installation guide at [pengzhangzhi/Open-dLLM](https://github.com/pengzhangzhi/Open-dLLM.git)
+
+Additionally, install the core dependencies required by this repository:
+
+```bash
+pip install torch transformers datasets evaluate autopep8 tqdm
 ```
 
 ### Usage

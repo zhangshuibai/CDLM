@@ -1,21 +1,19 @@
-# CDLM: Code Diffusion Language Model
+# CDLM: Corrective Diffusion Language Models
 
-A code generation and refinement framework for evaluating and improving code generation models on benchmarks like HumanEval.
+A research framework for studying and improving **self-revision in diffusion language models**, with a focus on **error localization, confidence-based remasking, and corrective training**.
+
+The codebase supports controlled code corruption and iterative refinement, enabling systematic evaluation of why standard diffusion LMs fail to correct minimal code errors (e.g., one-token bugs) on benchmarks such as HumanEval.
 
 ## Features
 
-- Code generation with multiple model support (LLaDA, Dream, Open-dLLM)
-- Code refinement using self-confidence remasking
-- Evaluation on HumanEval benchmark
-- Noise injection for robustness testing
+- Iterative code generation and **self-revision** with diffusion language models
+- Controlled semantic corruption (single-token and structured bugs)
+- Analysis of **confidence–correctness misalignment** in remasking
+- Corrective diffusion training with supervision on corrupted-but-visible tokens
+- Evaluation on HumanEval and revision-focused benchmarks
+
 
 ## Quick Start
-
-### Prerequisites
-
-- Python 3.8+
-- CUDA-capable GPU
-- Required Python packages (see requirements below)
 
 ### Installation
 

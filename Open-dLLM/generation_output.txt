@@ -1,0 +1,6695 @@
+========================= PROMPT =========================
+
+
+Write a function to find the top k integers that occur most frequently from given lists of sorted and distinct integers using heap queue algorithm. Your code should pass these tests:
+
+assert func([[1, 2, 6], [1, 3, 4, 5, 7, 8], [1, 3, 5, 6, 8, 9], [2, 5, 7, 11], [1, 4, 7, 8, 12]],3)==[5, 7, 1]
+assert func([[1, 2, 6], [1, 3, 4, 5, 7, 8], [1, 3, 5, 6, 8, 9], [2, 5, 7, 11], [1, 4, 7, 8, 12]],1)==[1]
+assert func([[1, 2, 6], [1, 3, 4, 5, 7, 8], [1, 3, 5, 6, 8, 9], [2, 5, 7, 11], [1, 4, 7, 8, 12]],5)==[6, 5, 7, 8, 1]```python
+
+
+
+========================= FINAL GENERATION =========================
+
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    d = {}
+    for sublist in nums:
+        for num in sublist:
+        if num in d:
+            d[num] += 1
+        else:
+            d[num] = 1
+    result = []
+    heap = []
+    for key, value in d.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+========================= GENERATION HISTORY =========================
+
+--- Step 1 ---
+
+
+--- Step 2 ---
+
+
+--- Step 3 ---
+
+
+--- Step 4 ---
+``
+
+--- Step 5 ---
+``
+
+--- Step 6 ---
+``
+
+--- Step 7 ---
+``
+
+--- Step 8 ---
+```
+
+
+--- Step 9 ---
+```
+
+
+--- Step 10 ---
+```
+
+
+--- Step 11 ---
+```
+
+
+--- Step 12 ---
+ return```
+
+
+--- Step 13 ---
+ return```
+
+
+--- Step 14 ---
+ return```
+
+
+--- Step 15 ---
+ return```
+
+
+--- Step 16 ---
+ return
+```
+
+
+--- Step 17 ---
+ return
+```
+
+
+--- Step 18 ---
+ return
+```
+
+
+--- Step 19 ---
+ return
+```
+
+
+--- Step 20 ---
+    return
+```
+
+
+--- Step 21 ---
+    return
+```
+
+
+--- Step 22 ---
+    return
+```
+
+
+--- Step 23 ---
+    return
+```
+
+
+--- Step 24 ---
+ heapq    return
+```
+
+
+--- Step 25 ---
+ heapq    return
+```
+
+
+--- Step 26 ---
+ heapq    return
+```
+
+
+--- Step 27 ---
+ heapq    return
+```
+
+
+--- Step 28 ---
+ heapq import    return
+```
+
+
+--- Step 29 ---
+ heapq import    return
+```
+
+
+--- Step 30 ---
+ heapq import    return
+```
+
+
+--- Step 31 ---
+ heapq import    return
+```
+
+
+--- Step 32 ---
+from heapq import    return
+```
+
+
+--- Step 33 ---
+from heapq import    return
+```
+
+
+--- Step 34 ---
+from heapq import    return
+```
+
+
+--- Step 35 ---
+from heapq import    return
+```
+
+
+--- Step 36 ---
+from heapq importapp    return
+```
+
+
+--- Step 37 ---
+from heapq importapp    return
+```
+
+
+--- Step 38 ---
+from heapq importapp    return
+```
+
+
+--- Step 39 ---
+from heapq importapp    return
+```
+
+
+--- Step 40 ---
+from heapq importapp,    return
+```
+
+
+--- Step 41 ---
+from heapq importapp,    return
+```
+
+
+--- Step 42 ---
+from heapq importapp,    return
+```
+
+
+--- Step 43 ---
+from heapq import heapp,    return
+```
+
+
+--- Step 44 ---
+from heapq import heapp,    return
+```
+
+
+--- Step 45 ---
+from heapq import heapp,    return
+```
+
+
+--- Step 46 ---
+from heapq import heapp,    return
+```
+
+
+--- Step 47 ---
+from heapq import heapp, he    return
+```
+
+
+--- Step 48 ---
+from heapq import heapp, he    return
+```
+
+
+--- Step 49 ---
+from heapq import heapp, he    return
+```
+
+
+--- Step 50 ---
+from heapq import heapp, he    return
+```
+
+
+--- Step 51 ---
+from heapq import heapp, heapp    return
+```
+
+
+--- Step 52 ---
+from heapq import heapp, heapp    return
+```
+
+
+--- Step 53 ---
+from heapq import heapp, heapp    return
+```
+
+
+--- Step 54 ---
+from heapq import heapp, heapp    return
+```
+
+
+--- Step 55 ---
+from heapq import heappush, heapp    return
+```
+
+
+--- Step 56 ---
+from heapq import heappush, heapp    return
+```
+
+
+--- Step 57 ---
+from heapq import heappush, heapp    return
+```
+
+
+--- Step 58 ---
+from heapq import heappush, heapp    return
+```
+
+
+--- Step 59 ---
+from heapq import heappush, heappop    return
+```
+
+
+--- Step 60 ---
+from heapq import heappush, heappop    return
+```
+
+
+--- Step 61 ---
+from heapq import heappush, heappop    return
+```
+
+
+--- Step 62 ---
+from heapq import heappush, heappop    return
+```
+
+
+--- Step 63 ---
+from heapq import heappush, heappop,    return
+```
+
+
+--- Step 64 ---
+from heapq import heappush, heappop,    return
+```
+
+
+--- Step 65 ---
+from heapq import heappush, heappop,    return
+```
+
+
+--- Step 66 ---
+from heapq import heappush, heappop,    return
+```
+
+
+--- Step 67 ---
+from heapq import heappush, heappop,ush    return
+```
+
+
+--- Step 68 ---
+from heapq import heappush, heappop,ush    return
+```
+
+
+--- Step 69 ---
+from heapq import heappush, heappop,ush    return
+```
+
+
+--- Step 70 ---
+from heapq import heappush, heappop,ush    return
+```
+
+
+--- Step 71 ---
+from heapq import heappush, heappop,appush    return
+```
+
+
+--- Step 72 ---
+from heapq import heappush, heappop,appush    return
+```
+
+
+--- Step 73 ---
+from heapq import heappush, heappop,appush    return
+```
+
+
+--- Step 74 ---
+from heapq import heappush, heappop,appush    return
+```
+
+
+--- Step 75 ---
+from heapq import heappush, heappop, heappush    return
+```
+
+
+--- Step 76 ---
+from heapq import heappush, heappop, heappush    return
+```
+
+
+--- Step 77 ---
+from heapq import heappush, heappop, heappush    return
+```
+
+
+--- Step 78 ---
+from heapq import heappush, heappop, heappush    return
+```
+
+
+--- Step 79 ---
+from heapq import heappush, heappop, heappushop    return
+```
+
+
+--- Step 80 ---
+from heapq import heappush, heappop, heappushop    return
+```
+
+
+--- Step 81 ---
+from heapq import heappush, heappop, heappushop    return
+```
+
+
+--- Step 82 ---
+from heapq import heappush, heappop, heappushop    return
+```
+
+
+--- Step 83 ---
+from heapq import heappush, heappop, heappushappop    return
+```
+
+
+--- Step 84 ---
+from heapq import heappush, heappop, heappushappop    return
+```
+
+
+--- Step 85 ---
+from heapq import heappush, heappop, heappushappop    return
+```
+
+
+--- Step 86 ---
+from heapq import heappush, heappop, heappushheappop    return
+```
+
+
+--- Step 87 ---
+from heapq import heappush, heappop, heappushheappop    return
+```
+
+
+--- Step 88 ---
+from heapq import heappush, heappop, heappushheappop    return
+```
+
+
+--- Step 89 ---
+from heapq import heappush, heappop, heappushheappop    return
+```
+
+
+--- Step 90 ---
+from heapq import heappush, heappop, heappush.appendheappop    return
+```
+
+
+--- Step 91 ---
+from heapq import heappush, heappop, heappush.appendheappop    return
+```
+
+
+--- Step 92 ---
+from heapq import heappush, heappop, heappush.appendheappop    return
+```
+
+
+--- Step 93 ---
+from heapq import heappush, heappop, heappush.appendheappop    return
+```
+
+
+--- Step 94 ---
+from heapq import heappush, heappop, heappush.append(heappop    return
+```
+
+
+--- Step 95 ---
+from heapq import heappush, heappop, heappush.append(heappop    return
+```
+
+
+--- Step 96 ---
+from heapq import heappush, heappop, heappush.append(heappop    return
+```
+
+
+--- Step 97 ---
+from heapq import heappush, heappop, heappush.append(heappop    return
+```
+
+
+--- Step 98 ---
+from heapq import heappush, heappop, heappush.append(heappop))
+    return
+```
+
+
+--- Step 99 ---
+from heapq import heappush, heappop, heappush.append(heappop))
+    return
+```
+
+
+--- Step 100 ---
+from heapq import heappush, heappop, heappush.append(heappop))
+    return
+```
+
+
+--- Step 101 ---
+from heapq import heappush, heappop, heappush.append(heappop))
+    return
+```
+
+
+--- Step 102 ---
+from heapq import heappush, heappop, heappush.append(heappop(heap))
+    return
+```
+
+
+--- Step 103 ---
+from heapq import heappush, heappop, heappush.append(heappop(heap))
+    return
+```
+
+
+--- Step 104 ---
+from heapq import heappush, heappop, heappush.append(heappop(heap))
+    return
+```
+
+
+--- Step 105 ---
+from heapq import heappush, heappop, heappush.append(heappop(heap))
+    return
+```
+
+
+--- Step 106 ---
+from heapq import heappush, heappop, heappush       .append(heappop(heap))
+    return
+```
+
+
+--- Step 107 ---
+from heapq import heappush, heappop, heappush       .append(heappop(heap))
+    return
+```
+
+
+--- Step 108 ---
+from heapq import heappush, heappop, heappush       .append(heappop(heap))
+    return
+```
+
+
+--- Step 109 ---
+from heapq import heappush, heappop, heappush       .append(heappop(heap))
+    return
+```
+
+
+--- Step 110 ---
+from heapq import heappush, heappop, heappush(heap       .append(heappop(heap))
+    return
+```
+
+
+--- Step 111 ---
+from heapq import heappush, heappop, heappush(heap       .append(heappop(heap))
+    return
+```
+
+
+--- Step 112 ---
+from heapq import heappush, heappop, heappush(heap       .append(heappop(heap))
+    return
+```
+
+
+--- Step 113 ---
+from heapq import heappush, heappop, heappush(heap       .append(heappop(heap))
+    return
+```
+
+
+--- Step 114 ---
+from heapq import heappush, heappop, heappushapp(heap       .append(heappop(heap))
+    return
+```
+
+
+--- Step 115 ---
+from heapq import heappush, heappop, heappushapp(heap       .append(heappop(heap))
+    return
+```
+
+
+--- Step 116 ---
+from heapq import heappush, heappop, heappushapp(heap       .append(heappop(heap))
+    return
+```
+
+
+--- Step 117 ---
+from heapq import heappush, heappop, heappushapp(heap       .append(heappop(heap))
+    return
+```
+
+
+--- Step 118 ---
+from heapq import heappush, heappop, heappush heapp(heap       .append(heappop(heap))
+    return
+```
+
+
+--- Step 119 ---
+from heapq import heappush, heappop, heappush heapp(heap       .append(heappop(heap))
+    return
+```
+
+
+--- Step 120 ---
+from heapq import heappush, heappop, heappush heapp(heap       .append(heappop(heap))
+    return
+```
+
+
+--- Step 121 ---
+from heapq import heappush, heappop, heappush heapp(heap       .append(heappop(heap))
+    return
+```
+
+
+--- Step 122 ---
+from heapq import heappush, heappop, heappush heappop(heap       .append(heappop(heap))
+    return
+```
+
+
+--- Step 123 ---
+from heapq import heappush, heappop, heappush heappop(heap       .append(heappop(heap))
+    return
+```
+
+
+--- Step 124 ---
+from heapq import heappush, heappop, heappush heappop(heap       .append(heappop(heap))
+    return
+```
+
+
+--- Step 125 ---
+from heapq import heappush, heappop, heappush heappop(heap       .append(heappop(heap))
+    return
+```
+
+
+--- Step 126 ---
+from heapq import heappush, heappop, heappush heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 127 ---
+from heapq import heappush, heappop, heappush heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 128 ---
+from heapq import heappush, heappop, heappush heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 129 ---
+from heapq import heappush, heappop, heappush            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 130 ---
+from heapq import heappush, heappop, heappush            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 131 ---
+from heapq import heappush, heappop, heappush            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 132 ---
+from heapq import heappush, heappop, heappush            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 133 ---
+from heapq import heappush, heappop, heappush(heap            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 134 ---
+from heapq import heappush, heappop, heappush(heap            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 135 ---
+from heapq import heappush, heappop, heappush(heap            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 136 ---
+from heapq import heappush, heappop, heappush(heap            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 137 ---
+from heapq import heappush, heappop, heappush(heap)            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 138 ---
+from heapq import heappush, heappop, heappush(heap)            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 139 ---
+from heapq import heappush, heappop, heappush(heap)            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 140 ---
+from heapq import heappush, heappop, heappush(heap)            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 141 ---
+from heapq import heappush, heappop, heappush len(heap)            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 142 ---
+from heapq import heappush, heappop, heappush len(heap)            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 143 ---
+from heapq import heappush, heappop, heappush len(heap)            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 144 ---
+from heapq import heappush, heappop, heappush len(heap)            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 145 ---
+from heapq import heappush, heappop, heappush len(heap) k            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 146 ---
+from heapq import heappush, heappop, heappush len(heap) k            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 147 ---
+from heapq import heappush, heappop, heappush len(heap) k            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 148 ---
+from heapq import heappush, heappop, heappush len(heap) k            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 149 ---
+from heapq import heappush, heappop, heappush len(heap) > k            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 150 ---
+from heapq import heappush, heappop, heappush len(heap) > k            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 151 ---
+from heapq import heappush, heappop, heappush len(heap) > k            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 152 ---
+from heapq import heappush, heappop, heappush len(heap) > k            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 153 ---
+from heapq import heappush, heappop, heappush len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 154 ---
+from heapq import heappush, heappop, heappush len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 155 ---
+from heapq import heappush, heappop, heappush len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 156 ---
+from heapq import heappush, heappop, heappush len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 157 ---
+from heapq import heappush, heappop, heappush        len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 158 ---
+from heapq import heappush, heappop, heappush        len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 159 ---
+from heapq import heappush, heappop, heappush        len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 160 ---
+from heapq import heappush, heappop, heappush        len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 161 ---
+from heapq import heappush, heappop, heappush        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 162 ---
+from heapq import heappush, heappop, heappush        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 163 ---
+from heapq import heappush, heappop, heappush        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 164 ---
+from heapq import heappush, heappop, heappush        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 165 ---
+from heapq import heappush, heappop, heappush,        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 166 ---
+from heapq import heappush, heappop, heappush,        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 167 ---
+from heapq import heappush, heappop, heappush,        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 168 ---
+from heapq import heappush, heappop, heappushapp,        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 169 ---
+from heapq import heappush, heappop, heappushapp,        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 170 ---
+from heapq import heappush, heappop, heappushapp,        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 171 ---
+from heapq import heappush, heappop, heappushapp,        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 172 ---
+from heapq import heappush, heappop, heappush heapp,        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 173 ---
+from heapq import heappush, heappop, heappush heapp,        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 174 ---
+from heapq import heappush, heappop, heappush heapp,        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 175 ---
+from heapq import heappush, heappop, heappush heapp,        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 176 ---
+from heapq import heappush, heappop, heappush heappush,        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 177 ---
+from heapq import heappush, heappop, heappush heappush,        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 178 ---
+from heapq import heappush, heappop, heappush heappush,        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 179 ---
+from heapq import heappush, heappop, heappush heappush,        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 180 ---
+from heapq import heappush, heappop, heappush heappush(heap,        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 181 ---
+from heapq import heappush, heappop, heappush heappush(heap,        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 182 ---
+from heapq import heappush, heappop, heappush heappush(heap,        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 183 ---
+from heapq import heappush, heappop, heappush heappush(heap,        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 184 ---
+from heapq import heappush, heappop, heappush heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 185 ---
+from heapq import heappush, heappop, heappush heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 186 ---
+from heapq import heappush, heappop, heappush heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 187 ---
+from heapq import heappush, heappop, heappush heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 188 ---
+from heapq import heappush, heappop, heappush        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 189 ---
+from heapq import heappush, heappop, heappush        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 190 ---
+from heapq import heappush, heappop, heappush        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 191 ---
+from heapq import heappush, heappop, heappush        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 192 ---
+from heapq import heappush, heappop, heappush.items        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 193 ---
+from heapq import heappush, heappop, heappush.items        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 194 ---
+from heapq import heappush, heappop, heappush.items        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 195 ---
+from heapq import heappush, heappop, heappush.items        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 196 ---
+from heapq import heappush, heappop, heappush.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 197 ---
+from heapq import heappush, heappop, heappush.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 198 ---
+from heapq import heappush, heappop, heappush.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 199 ---
+from heapq import heappush, heappop, heappush.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 200 ---
+from heapq import heappush, heappop, heappush   .items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 201 ---
+from heapq import heappush, heappop, heappush   .items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 202 ---
+from heapq import heappush, heappop, heappush   .items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 203 ---
+from heapq import heappush, heappop, heappush   .items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 204 ---
+from heapq import heappush, heappop, heappush    for.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 205 ---
+from heapq import heappush, heappop, heappush    for.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 206 ---
+from heapq import heappush, heappop, heappush    for.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 207 ---
+from heapq import heappush, heappop, heappush    for.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 208 ---
+from heapq import heappush, heappop, heappush    for in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 209 ---
+from heapq import heappush, heappop, heappush    for in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 210 ---
+from heapq import heappush, heappop, heappush    for in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 211 ---
+from heapq import heappush, heappop, heappush    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 212 ---
+from heapq import heappush, heappop, heappush    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 213 ---
+from heapq import heappush, heappop, heappush    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 214 ---
+from heapq import heappush, heappop, heappush    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 215 ---
+from heapq import heappush, heappop, heappush []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 216 ---
+from heapq import heappush, heappop, heappush []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 217 ---
+from heapq import heappush, heappop, heappush []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 218 ---
+from heapq import heappush, heappop, heappush []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 219 ---
+from heapq import heappush, heappop, heappush    []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 220 ---
+from heapq import heappush, heappop, heappush    []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 221 ---
+from heapq import heappush, heappop, heappush    []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 222 ---
+from heapq import heappush, heappop, heappush    []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 223 ---
+from heapq import heappush, heappop, heappush    = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 224 ---
+from heapq import heappush, heappop, heappush    = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 225 ---
+from heapq import heappush, heappop, heappush    = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 226 ---
+from heapq import heappush, heappop, heappush    = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 227 ---
+from heapq import heappush, heappop, heappush    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 228 ---
+from heapq import heappush, heappop, heappush    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 229 ---
+from heapq import heappush, heappop, heappush    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 230 ---
+from heapq import heappush, heappop, heappush    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 231 ---
+from heapq import heappush, heappop, heappushdef    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 232 ---
+from heapq import heappush, heappop, heappushdef    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 233 ---
+from heapq import heappush, heappop, heappushdef    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 234 ---
+from heapq import heappush, heappop, heappushdef    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 235 ---
+from heapq import heappush, heappop, heappushdef func    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 236 ---
+from heapq import heappush, heappop, heappushdef func    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 237 ---
+from heapq import heappush, heappop, heappushdef func    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 238 ---
+from heapq import heappush, heappop, heappushdef func    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 239 ---
+from heapq import heappush, heappop, heappush
+
+def func    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 240 ---
+from heapq import heappush, heappop, heappush
+
+def func    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 241 ---
+from heapq import heappush, heappop, heappush
+
+def func    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 242 ---
+from heapq import heappush, heappop, heappush
+
+def func    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 243 ---
+from heapq import heappush, heappop, heappush
+
+def func       heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 244 ---
+from heapq import heappush, heappop, heappush
+
+def func       heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 245 ---
+from heapq import heappush, heappop, heappush
+
+def func       heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 246 ---
+from heapq import heappush, heappop, heappush
+
+def func       heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 247 ---
+from heapq import heappush, heappop, heappush
+
+def func    []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 248 ---
+from heapq import heappush, heappop, heappush
+
+def func    []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 249 ---
+from heapq import heappush, heappop, heappush
+
+def func    []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 250 ---
+from heapq import heappush, heappop, heappush
+
+def func    []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 251 ---
+from heapq import heappush, heappop, heappush
+
+def func    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 252 ---
+from heapq import heappush, heappop, heappush
+
+def func    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 253 ---
+from heapq import heappush, heappop, heappush
+
+def func    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 254 ---
+from heapq import heappush, heappop, heappush
+
+def func]    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 255 ---
+from heapq import heappush, heappop, heappush
+
+def func]    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 256 ---
+from heapq import heappush, heappop, heappush
+
+def func]    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 257 ---
+from heapq import heappush, heappop, heappush
+
+def func]    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 258 ---
+from heapq import heappush, heappop, heappush
+
+def func]     = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 259 ---
+from heapq import heappush, heappop, heappush
+
+def func]     = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 260 ---
+from heapq import heappush, heappop, heappush
+
+def func]     = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 261 ---
+from heapq import heappush, heappop, heappush
+
+def func]     = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 262 ---
+from heapq import heappush, heappop, heappush
+
+def func] 1    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 263 ---
+from heapq import heappush, heappop, heappush
+
+def func] 1    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 264 ---
+from heapq import heappush, heappop, heappush
+
+def func] 1    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 265 ---
+from heapq import heappush, heappop, heappush
+
+def func] 1    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 266 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+] 1    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 267 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+] 1    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 268 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+] 1    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 269 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+] 1    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 270 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 271 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 272 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 273 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 274 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 275 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 276 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 277 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 278 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 279 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 280 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 281 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 282 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+       :
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 283 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+       :
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 284 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+       :
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 285 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+       :
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 286 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 287 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 288 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 289 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 290 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+         else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 291 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+         else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 292 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+         else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 293 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+ 
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 294 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+ 
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 295 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+ 
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 296 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+ 
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 297 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+] 
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 298 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+] 
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 299 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+] 
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 300 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+] 
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 301 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+] 1
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 302 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+] 1
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 303 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+] 1
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 304 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+] 1
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 305 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+           ] 1
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 306 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+           ] 1
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 307 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+           ] 1
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 308 ---
+from heapq import heappush, heappop, heappush
+
+def func:
+           ] 1
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 309 ---
+from heapq import heappush, heappop, heappush
+
+def func in:
+           ] 1
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 310 ---
+from heapq import heappush, heappop, heappush
+
+def func in:
+           ] 1
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 311 ---
+from heapq import heappush, heappop, heappush
+
+def func in:
+           ] 1
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 312 ---
+from heapq import heappush, heappop, heappush
+
+def func in:
+           ] 1
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 313 ---
+from heapq import heappush, heappop, heappush
+
+def func in:
+           ] += 1
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 314 ---
+from heapq import heappush, heappop, heappush
+
+def func in:
+           ] += 1
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 315 ---
+from heapq import heappush, heappop, heappush
+
+def func in:
+           ] += 1
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 316 ---
+from heapq import heappush, heappop, heappush
+
+def func in:
+           ] += 1
+        else:
+           ] 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 317 ---
+from heapq import heappush, heappop, heappush
+
+def func in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 318 ---
+from heapq import heappush, heappop, heappush
+
+def func in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 319 ---
+from heapq import heappush, heappop, heappush
+
+def func in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 320 ---
+from heapq import heappush, heappop, heappush
+
+def func in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 321 ---
+from heapq import heappush, heappop, heappush
+
+def func if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 322 ---
+from heapq import heappush, heappop, heappush
+
+def func if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 323 ---
+from heapq import heappush, heappop, heappush
+
+def func if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 324 ---
+from heapq import heappush, heappop, heappush
+
+def func if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 325 ---
+from heapq import heappush, heappop, heappush
+
+def func        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 326 ---
+from heapq import heappush, heappop, heappush
+
+def func        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 327 ---
+from heapq import heappush, heappop, heappush
+
+def func        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 328 ---
+from heapq import heappush, heappop, heappush
+
+def func        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 329 ---
+from heapq import heappush, heappop, heappush
+
+def func for        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 330 ---
+from heapq import heappush, heappop, heappush
+
+def func for        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 331 ---
+from heapq import heappush, heappop, heappush
+
+def func for        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 332 ---
+from heapq import heappush, heappop, heappush
+
+def func for        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 333 ---
+from heapq import heappush, heappop, heappush
+
+def func for in        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 334 ---
+from heapq import heappush, heappop, heappush
+
+def func for in        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 335 ---
+from heapq import heappush, heappop, heappush
+
+def func for in        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 336 ---
+from heapq import heappush, heappop, heappush
+
+def func for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 337 ---
+from heapq import heappush, heappop, heappush
+
+def func for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 338 ---
+from heapq import heappush, heappop, heappush
+
+def func for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 339 ---
+from heapq import heappush, heappop, heappush
+
+def func for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 340 ---
+from heapq import heappush, heappop, heappush
+
+def func in for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 341 ---
+from heapq import heappush, heappop, heappush
+
+def func in for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 342 ---
+from heapq import heappush, heappop, heappush
+
+def func in for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 343 ---
+from heapq import heappush, heappop, heappush
+
+def func in for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 344 ---
+from heapq import heappush, heappop, heappush
+
+def func for in for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 345 ---
+from heapq import heappush, heappop, heappush
+
+def func for in for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 346 ---
+from heapq import heappush, heappop, heappush
+
+def func for in for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 347 ---
+from heapq import heappush, heappop, heappush
+
+def func for in for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 348 ---
+from heapq import heappush, heappop, heappush
+
+def func for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 349 ---
+from heapq import heappush, heappop, heappush
+
+def func for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 350 ---
+from heapq import heappush, heappop, heappush
+
+def func for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 351 ---
+from heapq import heappush, heappop, heappush
+
+def func for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 352 ---
+from heapq import heappush, heappop, heappush
+
+def func    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 353 ---
+from heapq import heappush, heappop, heappush
+
+def func    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 354 ---
+from heapq import heappush, heappop, heappush
+
+def func    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 355 ---
+from heapq import heappush, heappop, heappush
+
+def func    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 356 ---
+from heapq import heappush, heappop, heappush
+
+def func       for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 357 ---
+from heapq import heappush, heappop, heappush
+
+def func       for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 358 ---
+from heapq import heappush, heappop, heappush
+
+def func       for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 359 ---
+from heapq import heappush, heappop, heappush
+
+def func       for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 360 ---
+from heapq import heappush, heappop, heappush
+
+def func    =    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 361 ---
+from heapq import heappush, heappop, heappush
+
+def func    =    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 362 ---
+from heapq import heappush, heappop, heappush
+
+def func    =    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 363 ---
+from heapq import heappush, heappop, heappush
+
+def func    =    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 364 ---
+from heapq import heappush, heappop, heappush
+
+def func    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 365 ---
+from heapq import heappush, heappop, heappush
+
+def func    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 366 ---
+from heapq import heappush, heappop, heappush
+
+def func    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 367 ---
+from heapq import heappush, heappop, heappush
+
+def func    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 368 ---
+from heapq import heappush, heappop, heappush
+
+def func[int    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 369 ---
+from heapq import heappush, heappop, heappush
+
+def func[int    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 370 ---
+from heapq import heappush, heappop, heappush
+
+def func[int    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 371 ---
+from heapq import heappush, heappop, heappush
+
+def func[int    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 372 ---
+from heapq import heappush, heappop, heappush
+
+def func:[int    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 373 ---
+from heapq import heappush, heappop, heappush
+
+def func:[int    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 374 ---
+from heapq import heappush, heappop, heappush
+
+def func:[int    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 375 ---
+from heapq import heappush, heappop, heappush
+
+def func:[int    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 376 ---
+from heapq import heappush, heappop, heappush
+
+def func:[int]],    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 377 ---
+from heapq import heappush, heappop, heappush
+
+def func:[int]],    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 378 ---
+from heapq import heappush, heappop, heappush
+
+def func:[int]],    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 379 ---
+from heapq import heappush, heappop, heappush
+
+def func:[int]], k    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 380 ---
+from heapq import heappush, heappop, heappush
+
+def func:[int]], k    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 381 ---
+from heapq import heappush, heappop, heappush
+
+def func:[int]], k    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 382 ---
+from heapq import heappush, heappop, heappush
+
+def func:[int]], k    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 383 ---
+from heapq import heappush, heappop, heappush
+
+def func:[int]], k:    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 384 ---
+from heapq import heappush, heappop, heappush
+
+def func:[int]], k:    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 385 ---
+from heapq import heappush, heappop, heappush
+
+def func:[int]], k:    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 386 ---
+from heapq import heappush, heappop, heappush
+
+def func:[int]], k:    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 387 ---
+from heapq import heappush, heappop, heappush
+
+def func:[int]], k: int    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 388 ---
+from heapq import heappush, heappop, heappush
+
+def func:[int]], k: int    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 389 ---
+from heapq import heappush, heappop, heappush
+
+def func:[int]], k: int    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 390 ---
+from heapq import heappush, heappop, heappush
+
+def func:[int]], k: int    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 391 ---
+from heapq import heappush, heappop, heappush
+
+def func:[int]], k: int ->    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 392 ---
+from heapq import heappush, heappop, heappush
+
+def func:[int]], k: int ->    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 393 ---
+from heapq import heappush, heappop, heappush
+
+def func:[int]], k: int ->    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 394 ---
+from heapq import heappush, heappop, heappush
+
+def func:[int]], k: int ->    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 395 ---
+from heapq import heappush, heappop, heappush
+
+def func:[int]], k: int) ->    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 396 ---
+from heapq import heappush, heappop, heappush
+
+def func:[int]], k: int) ->    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 397 ---
+from heapq import heappush, heappop, heappush
+
+def func:[int]], k: int) ->    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 398 ---
+from heapq import heappush, heappop, heappush
+
+def func:[int]], k: int) ->    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 399 ---
+from heapq import heappush, heappop, heappush
+
+def func:[list[int]], k: int) ->    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 400 ---
+from heapq import heappush, heappop, heappush
+
+def func:[list[int]], k: int) ->    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 401 ---
+from heapq import heappush, heappop, heappush
+
+def func:[list[int]], k: int) ->    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 402 ---
+from heapq import heappush, heappop, heappush
+
+def func:[list[int]], k: int) ->    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 403 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) ->    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 404 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) ->    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 405 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) ->    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 406 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) ->    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 407 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 408 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 409 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 410 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 411 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 412 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 413 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 414 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 415 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 416 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 417 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 418 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 419 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 420 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 421 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 422 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for key, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 423 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for key, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 424 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for key, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 425 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for key, in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 426 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 427 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 428 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 429 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap,)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 430 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 431 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 432 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 433 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for in:
+        if in:
+           ] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 434 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for in:
+        if in:
+           [num] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 435 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for in:
+        if in:
+           [num] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 436 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for in:
+        if in:
+           [num] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 437 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for in:
+        if in:
+           [num] += 1
+        else:
+           ] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 438 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for in:
+        if in:
+           [num] += 1
+        else:
+           [num] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 439 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for in:
+        if in:
+           [num] += 1
+        else:
+           [num] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 440 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for in:
+        if in:
+           [num] += 1
+        else:
+           [num] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 441 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for in:
+        if in:
+           [num] += 1
+        else:
+           [num] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 442 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for num in:
+        if in:
+           [num] += 1
+        else:
+           [num] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 443 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for num in:
+        if in:
+           [num] += 1
+        else:
+           [num] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 444 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for num in:
+        if in:
+           [num] += 1
+        else:
+           [num] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 445 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for num in:
+        if in:
+           [num] += 1
+        else:
+           [num] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 446 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for num in:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 447 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for num in:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 448 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for num in:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 449 ---
+from heapq import heappush, heappop, heappush
+
+def func: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for num in:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 450 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for num in:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 451 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for num in:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 452 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for num in:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 453 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in:
+ for num in:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 454 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in nums:
+ for num in:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 455 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in nums:
+ for num in:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 456 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in nums:
+ for num in:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 457 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in nums:
+ for num in:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 458 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in nums:
+        for num in:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 459 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in nums:
+        for num in:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 460 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in nums:
+        for num in:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 461 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in nums:
+        for num in:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 462 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in nums:
+        for num in:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 463 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in nums:
+        for num in:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 464 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in nums:
+        for num in:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+       .append(heappop(heap))
+    return
+```
+
+
+--- Step 465 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in nums:
+        for num in:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return
+```
+
+
+--- Step 466 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in nums:
+        for num in:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return
+```
+
+
+--- Step 467 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in nums:
+        for num in:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return
+```
+
+
+--- Step 468 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in nums:
+        for num in:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return
+```
+
+
+--- Step 469 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in nums:
+        for num in:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 470 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in nums:
+        for num in:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 471 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in nums:
+        for num in:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 472 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in nums:
+        for num in:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 473 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in nums:
+        for num in sublist:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 474 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in nums:
+        for num in sublist:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 475 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in nums:
+        for num in sublist:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 476 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for in nums:
+        for num in sublist:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 477 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for sublist in nums:
+        for num in sublist:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 478 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for sublist in nums:
+        for num in sublist:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 479 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for sublist in nums:
+        for num in sublist:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 480 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for sublist in nums:
+        for num in sublist:
+        if num in:
+           [num] += 1
+        else:
+           [num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 481 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for sublist in nums:
+        for num in sublist:
+        if num in:
+            d[num] += 1
+        else:
+           [num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 482 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for sublist in nums:
+        for num in sublist:
+        if num in:
+            d[num] += 1
+        else:
+           [num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 483 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for sublist in nums:
+        for num in sublist:
+        if num in:
+            d[num] += 1
+        else:
+           [num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 484 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for sublist in nums:
+        for num in sublist:
+        if num in:
+            d[num] += 1
+        else:
+           [num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 485 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for sublist in nums:
+        for num in sublist:
+        if num in:
+            d[num] += 1
+        else:
+            d[num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 486 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for sublist in nums:
+        for num in sublist:
+        if num in:
+            d[num] += 1
+        else:
+            d[num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 487 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for sublist in nums:
+        for num in sublist:
+        if num in:
+            d[num] += 1
+        else:
+            d[num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 488 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    = {}
+    for sublist in nums:
+        for num in sublist:
+        if num in:
+            d[num] += 1
+        else:
+            d[num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 489 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    d = {}
+    for sublist in nums:
+        for num in sublist:
+        if num in:
+            d[num] += 1
+        else:
+            d[num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 490 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    d = {}
+    for sublist in nums:
+        for num in sublist:
+        if num in:
+            d[num] += 1
+        else:
+            d[num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 491 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    d = {}
+    for sublist in nums:
+        for num in sublist:
+        if num in:
+            d[num] += 1
+        else:
+            d[num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 492 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    d = {}
+    for sublist in nums:
+        for num in sublist:
+        if num in:
+            d[num] += 1
+        else:
+            d[num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 493 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    d = {}
+    for sublist in nums:
+        for num in sublist:
+        if num in d:
+            d[num] += 1
+        else:
+            d[num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 494 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    d = {}
+    for sublist in nums:
+        for num in sublist:
+        if num in d:
+            d[num] += 1
+        else:
+            d[num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 495 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    d = {}
+    for sublist in nums:
+        for num in sublist:
+        if num in d:
+            d[num] += 1
+        else:
+            d[num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 496 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    d = {}
+    for sublist in nums:
+        for num in sublist:
+        if num in d:
+            d[num] += 1
+        else:
+            d[num] = 1
+    result = []
+    heap = []
+    for key, value in.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+
+--- Step 497 ---
+from heapq import heappush, heappop, heappush
+
+def func(nums: list[list[int]], k: int) -> list[list[int]]:
+    d = {}
+    for sublist in nums:
+        for num in sublist:
+        if num in d:
+            d[num] += 1
+        else:
+            d[num] = 1
+    result = []
+    heap = []
+    for key, value in d.items():
+        heappush(heap, value)
+        if len(heap) > k:
+            heappop(heap)
+        result.append(heappop(heap))
+    return result
+```
+
+

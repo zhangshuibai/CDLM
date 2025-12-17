@@ -12,6 +12,7 @@ import autopep8 # for fixing mbpp indent
 import tokenize
 import io
 from typing import Tuple, List, Any
+from tqdm import tqdm
 
 def token_len(op: str, tokenizer) -> int:
     ids = tokenizer(op, add_special_tokens=False)["input_ids"]
@@ -557,7 +558,10 @@ def save_data(ds: str, type: str, orig_data:str, out_path: str, data_num = None,
     else:
         samples = ds["test"]
 
-    for sample in samples:
+    total_samples = len(samples)
+    print(f"Processing {total_samples} samples, generating {variants_per_sample} variants per sample...")
+    
+    for sample in tqdm(samples, desc="Generating buggy variants"):
         # Skip excluded tasks
         task_id_str = str(sample["task_id"])
         if task_id_str in excluded_task_ids:

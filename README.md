@@ -4,6 +4,7 @@
 
 **A research framework for studying and improving self-correction in masked diffusion language models**
 
+[![Project Page](https://img.shields.io/badge/Project-Page-blue)](https://zhangshuibai.github.io/CDLM/project_page/)
 [![Paper](https://img.shields.io/badge/Paper-arXiv-red)](https://arxiv.org/pdf/2512.15596)
 [![Collection](https://img.shields.io/badge/Collection-HuggingFace-yellow)](https://huggingface.co/collections/Shuibai12138/cdlm)
 

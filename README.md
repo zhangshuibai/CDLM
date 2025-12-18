@@ -4,8 +4,8 @@
 
 **A research framework for studying and improving self-correction in masked diffusion language models**
 
-[![Paper](https://img.shields.io/badge/Paper-arXiv-red)](https://arxiv.org/abs/XXXX.XXXXX)
-[![Code](https://img.shields.io/badge/Code-GitHub-blue)](https://github.com/zhangshuibai/CDLM)
+[![Paper](https://img.shields.io/badge/Paper-arXiv-red)](https://arxiv.org/pdf/2512.15596)
+[![Dataset](https://img.shields.io/badge/Dataset-HuggingFace-yellow)](https://huggingface.co/datasets/Shuibai12138/crb-datasets)
 
 </div>
 
@@ -219,11 +219,14 @@ CDLM/
 If you find this work useful, please cite:
 
 ```bibtex
-@article{zhang2024corrective,
-  title={Corrective Diffusion Language Models},
-  author={Zhang, Shuibai and Peng, Fred Zhangzhi and Zhang, Yiheng and Pan, Jin and Chrysos, Grigorios G},
-  journal={arXiv preprint arXiv:XXXX.XXXXX},
-  year={2024}
+@misc{zhang2025correctivediffusionlanguagemodels,
+      title={Corrective Diffusion Language Models}, 
+      author={Shuibai Zhang and Fred Zhangzhi Peng and Yiheng Zhang and Jin Pan and Grigorios G. Chrysos},
+      year={2025},
+      eprint={2512.15596},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2512.15596}, 
 }
 ```
 

@@ -30,3 +30,4 @@ venv/
 env/
 ENV/
 examples_local/
+hf_convert.py

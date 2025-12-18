@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>CDLM: Corrective Diffusion Language Models - Remask Trajectory Visualization</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
+        
+        /* Project Header Styles */
+        .project-header { 
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); 
+            color: white; 
+            padding: 60px 20px 50px; 
+            text-align: center; 
+        }
+        .project-title { 
+            font-size: 2.8em; 
+            font-weight: 700; 
+            margin-bottom: 15px; 
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .project-subtitle { 
+            font-size: 1.2em; 
+            color: #a0d2eb; 
+            margin-bottom: 30px; 
+            max-width: 800px; 
+            margin-left: auto; 
+            margin-right: auto; 
+        }
+        .authors { 
+            font-size: 1.1em; 
+            margin-bottom: 8px; 
+        }
+        .authors a { 
+            color: #7ec8e3; 
+            text-decoration: none; 
+        }
+        .authors a:hover { 
+            text-decoration: underline; 
+        }
+        .institutions { 
+            font-size: 0.95em; 
+            color: #b8d4e3; 
+            margin-bottom: 25px; 
+        }
+        .links { 
+            display: flex; 
+            justify-content: center; 
+            gap: 15px; 
+            flex-wrap: wrap; 
+        }
+        .link-btn { 
+            display: inline-flex; 
+            align-items: center; 
+            gap: 8px; 
+            padding: 10px 20px; 
+            border-radius: 25px; 
+            text-decoration: none; 
+            font-weight: 600; 
+            transition: transform 0.2s, box-shadow 0.2s; 
+        }
+        .link-btn:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3); 
+        }
+        .link-btn.arxiv { background: #b31b1b; color: white; }
+        .link-btn.github { background: #333; color: white; }
+        .link-btn.hf { background: #ff9d00; color: #333; }
+        
+        .abstract-section { 
+            max-width: 1800px; 
+            margin: 40px auto 20px; 
+            padding: 30px 40px; 
+            background: white; 
+            border-radius: 12px; 
+            box-shadow: 0 2px 15px rgba(0,0,0,0.08); 
+        }
+        .abstract-section .abstract-content {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .abstract-section h2 { 
+            color: #1a1a2e; 
+            margin-bottom: 15px; 
+            font-size: 1.5em;
+            text-align: center;
+        }
+        .abstract-section p { 
+            line-height: 1.8; 
+            color: #444; 
+            text-align: justify; 
+        }
+        
+        .visualization-section { 
+            max-width: 1800px; 
+            margin: 20px auto 40px; 
+            padding: 30px; 
+            background: white; 
+            border-radius: 12px; 
+            box-shadow: 0 2px 15px rgba(0,0,0,0.08); 
+        }
+        .viz-intro {
+            background: linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%);
+            border-left: 4px solid #ff9800;
+            padding: 20px 25px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            line-height: 1.7;
+        }
+        .viz-intro strong {
+            color: #e65100;
+        }
+        
+        /* Explanation Sections */
+        .explanation-section {
+            max-width: 1800px;
+            margin: 20px auto;
+            padding: 30px 40px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        }
+        .explanation-section h2 {
+            color: #1a1a2e;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #2196F3;
+        }
+        .explanation-content {
+            display: flex;
+            gap: 40px;
+            align-items: flex-start;
+        }
+        .explanation-text {
+            flex: 1;
+            line-height: 1.8;
+            color: #444;
+        }
+        .explanation-text p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        .explanation-image {
+            flex: 1;
+            text-align: center;
+        }
+        .explanation-image img {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .explanation-image .caption {
+            margin-top: 12px;
+            font-size: 0.9em;
+            color: #666;
+            font-style: italic;
+        }
+        .highlight-box {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            border-left: 4px solid #2196F3;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .highlight-box.green {
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            border-left-color: #4CAF50;
+        }
+        
+        .section-title { 
+            font-size: 1.8em; 
+            color: #1a1a2e; 
+            margin-bottom: 20px; 
+            padding-bottom: 10px; 
+            border-bottom: 3px solid #4CAF50; 
+        }
+        .container { max-width: 1800px; margin: 20px auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        
+        .sample-block { margin: 30px 0; padding: 20px; border: 2px solid #ddd; border-radius: 10px; background: #fafafa; }
+        .sample-header { padding: 15px; background: #e8f5e9; border-left: 4px solid #4CAF50; border-radius: 5px; margin-bottom: 15px; }
+        .sample-header h2 { margin: 0 0 5px 0; color: #2e7d32; }
+        .sample-header .task-info { color: #666; font-size: 14px; }
+        
+        .step-control { margin: 15px 0; padding: 10px; background: #f8f9fa; border-radius: 5px; }
+        .step-control label { margin-right: 10px; font-weight: bold; }
+        
+        .content-row { display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; margin: 20px 0; }
+        .token-panel { flex: 1.5; }
+        .plot-panel { flex: 1; }
+        
+        .token-display { padding: 15px; background: #fff; border: 1px solid #ddd; border-radius: 5px; min-height: 200px; }
+        .token { display: inline-block; margin: 2px; padding: 5px 8px; border-radius: 3px; font-size: 14px; cursor: pointer; position: relative; }
+        .token-fixed { background: #e3f2fd; border: 1px solid #90caf9; }
+        .token-variable { background: #fff3e0; border: 1px solid #ffb74d; }
+        .token-remask { background: #ffcdd2; border: 2px solid #ef5350; font-weight: bold; }
+        .token-error { background: #fff9c4; border: 2px solid #ff6f00; box-shadow: 0 0 5px rgba(255, 152, 0, 0.5); }
+        
+        .token-tooltip { position: absolute; display: none; background: rgba(0,0,0,0.9); color: white; padding: 10px; border-radius: 5px; z-index: 1000; min-width: 300px; font-size: 12px; line-height: 1.6; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .token-tooltip.show { display: block; }
+        .tooltip-section { margin: 5px 0; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.2); }
+        .tooltip-section:last-child { border-bottom: none; }
+        .tooltip-label { color: #aaa; font-size: 11px; }
+        .tooltip-value { color: #fff; font-weight: bold; }
+        
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 15px 0; }
+        .stat-card { padding: 10px; background: white; border: 1px solid #ddd; border-radius: 5px; }
+        .stat-label { font-size: 11px; color: #666; }
+        .stat-value { font-size: 16px; font-weight: bold; color: #333; }
+        
+        .info-box { margin: 10px 0; padding: 10px; background: #f1f3f4; border-radius: 3px; }
+        input[type="range"] { width: 100%; }
+    </style>
+</head>
+<body>
+    <!-- Project Header -->
+    <div class="project-header">
+        <h1 class="project-title">🔄 CDLM: Corrective Diffusion Language Models</h1>
+        <p class="project-subtitle">A research framework for studying and improving self-correction in masked diffusion language models</p>
+        
+        <div class="authors">
+            <a href="https://zhangshuibai.github.io/" target="_blank">Shuibai Zhang</a><sup>1</sup>,
+            <a href="https://pengzhangzhi.github.io/home/" target="_blank">Fred Zhangzhi Peng</a><sup>2</sup>,
+            <a href="https://yiheng0824.github.io/" target="_blank">Yiheng Zhang</a><sup>1</sup>,
+            <a href="https://jhinpan.github.io/" target="_blank">Jin Pan</a><sup>1</sup>,
+            <a href="https://grigoris.ece.wisc.edu/about.html" target="_blank">Grigorios G Chrysos</a><sup>1</sup>
+        </div>
+        <div class="institutions">
+            <sup>1</sup>University of Wisconsin–Madison &nbsp;&nbsp; <sup>2</sup>Duke University
+        </div>
+        
+        <div style="margin-top: 12px; font-size: 15px; color: #b0bec5;">
+            ✉️ Contact: <a href="mailto:shuibai@cs.wisc.edu" style="color: #64b5f6; text-decoration: none;">shuibai@cs.wisc.edu</a>
+        </div>
+        
+        <div class="links">
+            <a href="https://arxiv.org/pdf/2512.15596" class="link-btn arxiv" target="_blank">
+                📄 Paper (arXiv)
+            </a>
+            <a href="https://github.com/zhangshuibai/CDLM" class="link-btn github" target="_blank">
+                💻 GitHub
+            </a>
+            <a href="https://huggingface.co/collections/Shuibai12138/cdlm" class="link-btn hf" target="_blank">
+                🤗 HuggingFace
+            </a>
+        </div>
+    </div>
+    
+    <!-- Abstract Section -->
+    <div class="abstract-section">
+        <h2>📋 Abstract</h2>
+        <div class="abstract-content">
+            <p>
+                Diffusion language models are structurally well-suited for iterative error correction, as their non-causal denoising dynamics allow arbitrary positions in a sequence to be revised. However, standard masked diffusion language model (MDLM) training fails to induce such behavior, since incorrect but visible tokens receive no supervision, leaving token-level confidence uninformative about reliability. As a result, confidence-guided refinement is ineffective for targeted correction.
+            </p>
+            <p style="margin-top: 15px;">
+                To address this mismatch, we study corrective behavior in diffusion language models and propose a <strong>correction-oriented post-training principle</strong> that explicitly supervises visible incorrect tokens, enabling MDLMs to acquire error-aware confidence and targeted refinement capabilities. To systematically evaluate corrective behavior, we introduce the <strong>Code Revision Benchmark (CRB)</strong>, a controllable and executable benchmark designed to evaluate corrective behavior in diffusion language models.
+            </p>
+        </div>
+    </div>
+    
+    <!-- Visualization Section -->
+    <div class="visualization-section">
+        <h2 class="section-title">🎯 Case Study: Remask Trajectory Visualization</h2>
+        
+        <div class="viz-intro">
+            <strong>🔍 What is this case study?</strong><br>
+            To provide an intuitive understanding of why standard MDLMs struggle with self-correction, we present a detailed case study using <strong>LLaDA-8B-Base</strong> on the HumanEval benchmark. We visualize the remasking trajectory during iterative refinement on corrupted code samples, showing how the model's confidence values evolve across denoising steps. The key finding is that <strong>standard MDLM training produces unreliable token-level confidence</strong>. The model fails to assign low confidence to error tokens, making confidence-guided remasking ineffective for targeted correction. As shown in the examples below, even when errors exist, the model's confidence distribution does not accurately reflect error locations, leading to failed or misdirected refinement attempts.
+        </div>
+        
+        <div class="info-box" style="background: #e8f5e9; border-left: 4px solid #4CAF50; margin-bottom: 20px;">
+            <strong>Model:</strong> LLaDA-8B-Base | <strong>Dataset:</strong> HumanEval | <strong>Error Type:</strong> Operator | <strong>n_replace:</strong> 1 | <strong>Confidence Threshold:</strong> 0.90 | <strong>Samples:</strong> 3
+        </div>
+        
+        <div id="allSamples"></div>
+    </div>
+    
+    <!-- Why Confidence is Inaccurate Section -->
+    <div class="explanation-section">
+        <h2>🔬 Why is Confidence Inaccurate in Standard MDLMs?</h2>
+        <div class="explanation-content">
+            <div class="explanation-text">
+                <div class="highlight-box">
+                    <strong>Key Insight:</strong> Since incorrect but visible tokens never receive training gradients, the model has no mechanism to learn that it should express uncertainty about potentially wrong tokens. The confidence values for visible tokens are essentially <strong>untrained and meaningless</strong> for error detection.
+                </div>
+                <p>
+                    As illustrated in the figure, during MDLM training: the cross-marked boxes ([MASK]) represent masked tokens where the reconstruction loss is applied and gradients flow. The beige tokens are visible inputs that the model conditions on. Critically, the <strong>brown output positions</strong> (corresponding to unmasked/visible tokens) receive <strong>no supervision</strong> during training.
+                </p>
+                <p>
+                    This training paradigm creates a fundamental mismatch: when we later attempt to use the model's confidence to identify errors in visible tokens, the confidence values are unreliable because the model was never trained to produce meaningful confidence estimates for non-masked positions.
+                </p>
+            </div>
+            <div class="explanation-image">
+                <img src="mdlm_train.png" alt="MDLM Training Diagram">
+                <div class="caption">
+                    <strong>Figure:</strong> MDLM training. Cross-marked boxes denote masked tokens, while beige tokens are visible inputs. Green outputs indicate masked positions where the reconstruction loss is applied, whereas brown outputs correspond to unmasked tokens that receive no supervision during training.
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Code Revision Benchmark Section -->
+    <div class="explanation-section">
+        <h2>📊 Code Revision Benchmark (CRB)</h2>
+        <div class="explanation-content">
+            <div class="explanation-text">
+                <p>
+                    <strong>Corrective behavior</strong> refers to the ability of a model to identify and fix errors in its own outputs through iterative refinement. In the context of diffusion language models, this means using token-level confidence to localize potentially incorrect tokens, remask them, and regenerate correct replacements through subsequent denoising steps.
+                </p>
+                <p>
+                    To systematically evaluate corrective behavior in diffusion language models, we introduce the <strong>Code Revision Benchmark (CRB)</strong>, a controllable and executable benchmark designed specifically for studying self-correction capabilities.
+                </p>
+                <div class="highlight-box green">
+                    <strong>CRB Features:</strong>
+                    <ul style="margin: 10px 0 0 20px;">
+                        <li>Controlled token-level corruption (operator, identifier, literal substitutions)</li>
+                        <li>Execution-based validation of correctness</li>
+                        <li>Systematic categorization of error types</li>
+                        <li>Support for HumanEval, HumanEval+, MBPP, and MBPP+</li>
+                    </ul>
+                </div>
+                <p>
+                    This controlled corruption approach allows us to precisely measure whether diffusion language models can: (1) detect which tokens are corrupted based on confidence, and (2) successfully correct the errors through iterative refinement.
+                </p>
+            </div>
+            <div class="explanation-image">
+                <img src="CRB_pipeline.png" alt="CRB Pipeline Diagram">
+                <div class="caption">
+                    <strong>Figure:</strong> CRB corruption pipeline. A canonical program is tokenized, corrupted via type-preserving token replacement, validated by execution, categorized, and generated as a benchmark instance.
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Mixture Objective Section -->
+    <div class="explanation-section">
+        <h2 style="text-align: center;">🎯 Corrective Diffusion Language Models (CDLMs)</h2>
+        <div class="explanation-text" style="max-width: 1000px; margin: 0 auto;">
+            <p>
+                We define <strong>Corrective Diffusion Language Models (CDLMs)</strong> as diffusion language models that have been post-trained with an absorbing-uniform mixture objective. This post-training enables the model to develop error-aware confidence, allowing it to assign lower confidence to potentially incorrect tokens and thereby support effective confidence-guided correction.
+            </p>
+            
+            <p>
+                To address the fundamental limitation of standard MDLM training, we propose a <strong>correction-oriented post-training principle</strong> based on an <strong>absorbing-uniform mixture objective</strong>. This approach explicitly supervises visible corrupted tokens alongside masked reconstruction, enabling the model to learn error-aware confidence.
+            </p>
+            
+            <div class="highlight-box" style="margin: 20px 0;">
+                <strong>🔄 Two-Stage Mixture Corruption:</strong>
+                <ol style="margin: 10px 0 0 20px; line-height: 2;">
+                    <li><strong>Stage 1 (Absorbing-mask corruption):</strong> A fraction of tokens are replaced with <code>[MASK]</code>, providing standard reconstruction supervision.</li>
+                    <li><strong>Stage 2 (Uniform replacement corruption):</strong> Among the remaining <em>visible</em> tokens, some are replaced with randomly sampled incorrect tokens. These corrupted-but-visible positions receive explicit supervision.</li>
+                </ol>
+            </div>
+            
+            <p>
+                The key insight is that <strong>uniform replacement introduces explicit noise at visible positions</strong>, requiring the model to detect and correct corrupted tokens. The training objective becomes:
+            </p>
+            
+            <div style="background: #f8f9fa; padding: 15px 20px; border-radius: 8px; margin: 15px 0; font-family: 'Courier New', monospace; text-align: center;">
+                ℒ = (1/|𝓜|) Σ<sub>i∈𝓜</sub> ℓ<sub>i</sub> + λ<sub>noise</sub> · (1/|𝓝|) Σ<sub>i∈𝓝</sub> ℓ<sub>i</sub>
+            </div>
+            
+            <p>
+                Here <strong>𝓜</strong> denotes masked positions (standard reconstruction) and <strong>𝓝</strong> denotes positions corrupted via uniform replacement. The first term preserves denoising capability, while the second term trains the model to recognize and downweight incorrect visible content.
+            </p>
+            
+            
+        </div>
+    </div>
+    
+    <!-- Experimental Results Section -->
+    <div class="explanation-section">
+        <h2 style="text-align: center;">📈 Experimental Results: CDLM Outperforms Standard MDLMs</h2>
+        <div class="explanation-text" style="max-width: 1000px; margin: 0 auto;">
+            <p>
+                To validate the effectiveness of our error-aware post-training approach, we compare <strong>Corrective Diffusion Language Models (CDLMs)</strong> against standard MDLMs and base models on the Code Revision Benchmark (CRB).
+            </p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <img src="figure5.png" alt="CDLM vs MDLM vs Base Performance" style="max-width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <div class="caption" style="margin-top: 15px; font-size: 14px; color: #666;">
+                    <strong>Figure:</strong> Performance comparison on CRB. <em>Left:</em> Radar chart showing correction success rates across different corruption levels (n=1 to n=5). <em>Right:</em> Pass@1 improvement over refinement steps. CDLM consistently outperforms MDLM and Base, demonstrating effective iterative correction.
+                </div>
+            </div>
+            
+            <p>
+                The results demonstrate that <strong>CDLMs substantially outperform standard MDLMs</strong> across all corruption levels and refinement steps:
+            </p>
+            
+            <!-- <ul style="line-height: 2; margin: 15px 0 15px 20px;">
+                <li><strong>Higher correction rates:</strong> CDLM achieves significantly better performance across all n values (number of corrupted tokens), showing robust error localization even under heavy corruption.</li>
+                <li><strong>Effective iterative refinement:</strong> The Pass@1 improvement over refinement steps is much more pronounced for CDLM, indicating that confidence-guided remasking successfully targets actual errors.</li>
+                <li><strong>Consistent advantage:</strong> The performance gap between CDLM and MDLM/Base remains stable, confirming that error-aware training provides reliable calibration for self-correction.</li>
+            </ul> -->
+            
+            <p>
+                Experiments show that CDLMs substantially outperform standard MDLMs in both <strong>error localization</strong> (larger confidence gap between clean and corrupted tokens) and <strong>iterative correction</strong> (higher Pass@1 on CRB).
+            </p>
+            
+            <p>
+                These results validate our hypothesis: by explicitly supervising visible corrupted tokens during training, CDLMs develop <strong>meaningful token-level confidence</strong> that accurately reflects error locations, enabling effective confidence-guided refinement.
+            </p>
+        </div>
+    </div>
+    
+    <!-- Benefits Beyond Correction Section -->
+    <div class="explanation-section">
+        <h2 style="text-align: center;">🚀 Beyond Correction: Improved Pure Generation</h2>
+        <div class="explanation-text" style="max-width: 1000px; margin: 0 auto;">
+            <p>
+                An important benefit of enhanced corrective behavior is that it <strong>also improves performance in pure code generation tasks</strong>. This happens because diffusion language models naturally make mistakes during the iterative denoising process, and a model with better error-awareness can more effectively correct its own errors during decoding.
+            </p>
+            
+            <div style="margin: 30px 0; overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px; text-align: center;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid #333;">
+                            <th rowspan="2" style="padding: 10px; text-align: left; border-bottom: 1px solid #333;">Training + Decoding</th>
+                            <th colspan="2" style="padding: 10px; border-bottom: 1px solid #ccc;">HumanEval</th>
+                            <th colspan="2" style="padding: 10px; border-bottom: 1px solid #ccc;">HumanEval+</th>
+                            <th colspan="2" style="padding: 10px; border-bottom: 1px solid #ccc;">MBPP</th>
+                            <th colspan="2" style="padding: 10px; border-bottom: 1px solid #ccc;">MBPP+</th>
+                            <th colspan="2" style="padding: 10px; border-bottom: 1px solid #ccc;">Avg</th>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #333;">
+                            <th style="padding: 8px;">Pass@1</th>
+                            <th style="padding: 8px;">Pass@10</th>
+                            <th style="padding: 8px;">Pass@1</th>
+                            <th style="padding: 8px;">Pass@10</th>
+                            <th style="padding: 8px;">Pass@1</th>
+                            <th style="padding: 8px;">Pass@10</th>
+                            <th style="padding: 8px;">Pass@1</th>
+                            <th style="padding: 8px;">Pass@10</th>
+                            <th style="padding: 8px;">Pass@1</th>
+                            <th style="padding: 8px;">Pass@10</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 8px; text-align: left;">MDLM (Vanilla)</td>
+                            <td style="padding: 8px;">0.190</td>
+                            <td style="padding: 8px;">0.384</td>
+                            <td style="padding: 8px;">0.170</td>
+                            <td style="padding: 8px;">0.341</td>
+                            <td style="padding: 8px;">0.106</td>
+                            <td style="padding: 8px;">0.312</td>
+                            <td style="padding: 8px;">0.177</td>
+                            <td style="padding: 8px;">0.449</td>
+                            <td style="padding: 8px;">0.161</td>
+                            <td style="padding: 8px;">0.372</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #eee; background: #e8f5e9;">
+                            <td style="padding: 8px; text-align: left;"><strong>CDLM (Vanilla)</strong></td>
+                            <td style="padding: 8px;"><strong>0.216</strong></td>
+                            <td style="padding: 8px;"><strong>0.415</strong></td>
+                            <td style="padding: 8px;"><strong>0.205</strong></td>
+                            <td style="padding: 8px;"><strong>0.390</strong></td>
+                            <td style="padding: 8px;">0.131</td>
+                            <td style="padding: 8px;"><strong>0.352</strong></td>
+                            <td style="padding: 8px;">0.207</td>
+                            <td style="padding: 8px;">0.472</td>
+                            <td style="padding: 8px;"><strong>0.190</strong></td>
+                            <td style="padding: 8px;"><strong>0.407</strong></td>
+                        </tr>
+                        <tr style="border-bottom: 2px solid #333;">
+                            <td style="padding: 8px; text-align: left;">Base (Vanilla)</td>
+                            <td style="padding: 8px;">0.188</td>
+                            <td style="padding: 8px;">0.366</td>
+                            <td style="padding: 8px;">0.167</td>
+                            <td style="padding: 8px;">0.317</td>
+                            <td style="padding: 8px;"><strong>0.157</strong></td>
+                            <td style="padding: 8px;">0.350</td>
+                            <td style="padding: 8px;"><strong>0.231</strong></td>
+                            <td style="padding: 8px;"><strong>0.502</strong></td>
+                            <td style="padding: 8px;">0.186</td>
+                            <td style="padding: 8px;">0.384</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 8px; text-align: left;">MDLM (ReMDM)</td>
+                            <td style="padding: 8px;">0.198</td>
+                            <td style="padding: 8px;">0.384</td>
+                            <td style="padding: 8px;">0.172</td>
+                            <td style="padding: 8px;">0.341</td>
+                            <td style="padding: 8px;">0.108</td>
+                            <td style="padding: 8px;">0.328</td>
+                            <td style="padding: 8px;">0.170</td>
+                            <td style="padding: 8px;">0.444</td>
+                            <td style="padding: 8px;">0.162</td>
+                            <td style="padding: 8px;">0.374</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #eee; background: #e8f5e9;">
+                            <td style="padding: 8px; text-align: left;"><strong>CDLM (ReMDM)</strong></td>
+                            <td style="padding: 8px;"><strong>0.212</strong></td>
+                            <td style="padding: 8px;"><strong>0.427</strong></td>
+                            <td style="padding: 8px;"><strong>0.200</strong></td>
+                            <td style="padding: 8px;"><strong>0.378</strong></td>
+                            <td style="padding: 8px;">0.141</td>
+                            <td style="padding: 8px;">0.350</td>
+                            <td style="padding: 8px;">0.211</td>
+                            <td style="padding: 8px;">0.476</td>
+                            <td style="padding: 8px;"><strong>0.191</strong></td>
+                            <td style="padding: 8px;"><strong>0.408</strong></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; text-align: left;">Base (ReMDM)</td>
+                            <td style="padding: 8px;">0.182</td>
+                            <td style="padding: 8px;">0.329</td>
+                            <td style="padding: 8px;">0.164</td>
+                            <td style="padding: 8px;">0.293</td>
+                            <td style="padding: 8px;"><strong>0.160</strong></td>
+                            <td style="padding: 8px;"><strong>0.366</strong></td>
+                            <td style="padding: 8px;"><strong>0.232</strong></td>
+                            <td style="padding: 8px;"><strong>0.485</strong></td>
+                            <td style="padding: 8px;">0.185</td>
+                            <td style="padding: 8px;">0.368</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="caption" style="margin-top: 15px; font-size: 14px; color: #666; text-align: center;">
+                    <strong>Table:</strong> Pass@1 and Pass@10 on pure completion tasks across coding benchmarks. All evaluations use absorbing-mask reconstruction with a shared remask-based decoding framework. <em>Vanilla</em> decoding updates confidence at every refinement step, while <em>ReMDM</em> fixes each token's confidence to the value it receives when first unmasked. CDLM consistently outperforms MDLM under both decoding strategies.
+                </div>
+            </div>
+            <p>
+                This finding highlights that <strong>corrective post-training benefits go beyond targeted error correction</strong>. By learning to recognize and downweight potentially incorrect tokens, CDLMs become fundamentally better at the iterative refinement process that underlies diffusion-based generation.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const data = {"samples": [{"id": 0, "task_id": "HumanEval/0", "num_steps": 5, "initial": {"tokens": ["from", " typing", " import", " List", "\n", "\n", "\n", "def", " has", "_close", "_elements", "(n", "umbers", ":", " List", "[", "float", "],", " threshold", ":", " float", ")", " ->", " bool", ":", "\n", "   ", " \"\"\"", " Check", " if", " in", " given", " list", " of", " numbers", ",", " are", " any", " two", " numbers", " closer", " to", " each", " other", " than", "\n", "   ", " given", " threshold", ".", "\n", "   ", " \"\"\"", "\n", "\n", "\n", "   ", " for", " idx", ",", " elem", " in", " enumerate", "(n", "umbers", "):", "\n", "       ", " for", " idx", "2", ",", " elem", "2", " in", " enumerate", "(n", "umbers", "):", "\n", "           ", " if", " idx", " !=", " idx", "2", ":", "\n", "               ", " distance", " =", " abs", "(elem", " +", " elem", "2", ")", "\n", "               ", " if", " distance", " <", " threshold", ":", "\n", "                   ", " return", " True", "\n", "\n", "   ", " return", " False", "\n"], "token_ids": [4332, 28748, 1690, 4914, 198, 198, 198, 1413, 723, 38465, 60543, 3733, 22903, 25, 4914, 58, 10298, 2278, 14362, 25, 6231, 8, 4267, 4869, 25, 198, 305, 9913, 6616, 624, 296, 2730, 1746, 300, 5803, 11, 449, 897, 1307, 5803, 12621, 297, 1671, 880, 1040, 198, 305, 2730, 14362, 13, 198, 305, 9913, 198, 198, 198, 305, 352, 18400, 11, 38254, 296, 35424, 3733, 22903, 3535, 198, 394, 352, 18400, 17, 11, 38254, 17, 296, 35424, 3733, 22903, 3535, 198, 542, 624, 18400, 2648, 18400, 17, 25, 198, 921, 7118, 373, 3824, 84003, 781, 38254, 17, 8, 198, 921, 624, 7118, 797, 14362, 25, 198, 1546, 944, 8261, 198, 198, 305, 944, 10158, 198], "confidence": [Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity], "remask_positions": [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "fix_mask": [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false]}, "steps": [{"tokens": ["from", " typing", " import", " List", "\n", "\n", "\n", "def", " has", "_close", "_elements", "(n", "umbers", ":", " List", "[", "float", "],", " threshold", ":", " float", ")", " ->", " bool", ":", "\n", "   ", " \"\"\"", " Check", " if", " in", " given", " list", " of", " numbers", ",", " are", " any", " two", " numbers", " closer", " to", " each", " other", " than", "\n", "   ", " given", " threshold", ".", "\n", "   ", " \"\"\"", "\n", "\n", "\n", "   ", " for", " idx", ",", " elem", " in", " enumerate", "(n", "umbers", "):", "\n", "       ", " for", " idx", "2", ",", " elem", "2", " in", " enumerate", "(n", "umbers", "):", "\n", "           ", " if", " idx", " !=", " idx", "2", ":", "\n", "               ", " distance", " =", " abs", "(elem", " +", " elem", "2", ")", "\n", "               ", " if", " distance", " <", " threshold", ":", "\n", "                   ", " return", " True", "\n", "\n", "   ", " return", " False", "\n"], "token_ids": [4332, 28748, 1690, 4914, 198, 198, 198, 1413, 723, 38465, 60543, 3733, 22903, 25, 4914, 58, 10298, 2278, 14362, 25, 6231, 8, 4267, 4869, 25, 198, 305, 9913, 6616, 624, 296, 2730, 1746, 300, 5803, 11, 449, 897, 1307, 5803, 12621, 297, 1671, 880, 1040, 198, 305, 2730, 14362, 13, 198, 305, 9913, 198, 198, 198, 305, 352, 18400, 11, 38254, 296, 35424, 3733, 22903, 3535, 198, 394, 352, 18400, 17, 11, 38254, 17, 296, 35424, 3733, 22903, 3535, 198, 542, 624, 18400, 2648, 18400, 17, 25, 198, 921, 7118, 373, 3824, 84003, 781, 38254, 17, 8, 198, 921, 624, 7118, 797, 14362, 25, 198, 1546, 944, 8261, 198, 198, 305, 944, 10158, 198], "confidence": [Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, 0.9998816251754761, 0.999987006187439, 0.9998373985290527, 0.9996153116226196, 0.9989941716194153, 0.9992951154708862, 0.9999279975891113, 0.999771773815155, 0.9983384609222412, 0.9996172189712524, 0.9999775886535645, 0.9998917579650879, 0.9999819993972778, 0.999685525894165, 0.9999178647994995, 0.9997039437294006, 0.9989280104637146, 0.9999450445175171, 0.9999613761901855, 0.9999313354492188, 0.9997201561927795, 0.9989381432533264, 0.9993714690208435, 0.9999995231628418, 0.9999256134033203, 0.9998985528945923, 0.9991251826286316, 0.9985587000846863, 0.9946341514587402, 0.9999517202377319, 0.9995088577270508, 0.9999980926513672, 0.9998243451118469, 0.9988586902618408, 0.9997202754020691, 0.9993681311607361, 0.9997005462646484, 0.9130027294158936, 0.9996825456619263, 0.9999179840087891, 0.9991888403892517, 0.9387902617454529, 0.9999147653579712, 0.9999767541885376, 0.9991356730461121, 0.980997622013092, 0.9975665807723999, 0.999636173248291, 0.9999997615814209, 0.9990639090538025, 0.9999704360961914, 0.9978109002113342, 0.9999614953994751, 0.9999948740005493, 0.9990729093551636, 0.9999185800552368, 0.9944708347320557, 0.9896260499954224], "remask_positions": [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "fix_mask": [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "avg_error_conf": 0.9130027294158936, "avg_error_prob": 0.9130027294158936}, {"tokens": ["from", " typing", " import", " List", "\n", "\n", "\n", "def", " has", "_close", "_elements", "(n", "umbers", ":", " List", "[", "float", "],", " threshold", ":", " float", ")", " ->", " bool", ":", "\n", "   ", " \"\"\"", " Check", " if", " in", " given", " list", " of", " numbers", ",", " are", " any", " two", " numbers", " closer", " to", " each", " other", " than", "\n", "   ", " given", " threshold", ".", "\n", "   ", " \"\"\"", "\n", "\n", "\n", "   ", " for", " idx", ",", " elem", " in", " enumerate", "(n", "umbers", "):", "\n", "       ", " for", " idx", "2", ",", " elem", "2", " in", " enumerate", "(n", "umbers", "):", "\n", "           ", " if", " idx", " !=", " idx", "2", ":", "\n", "               ", " distance", " =", " abs", "(elem", " +", " elem", "2", ")", "\n", "               ", " if", " distance", " <", " threshold", ":", "\n", "                   ", " return", " True", "\n", "\n", "   ", " return", " False", "\n"], "token_ids": [4332, 28748, 1690, 4914, 198, 198, 198, 1413, 723, 38465, 60543, 3733, 22903, 25, 4914, 58, 10298, 2278, 14362, 25, 6231, 8, 4267, 4869, 25, 198, 305, 9913, 6616, 624, 296, 2730, 1746, 300, 5803, 11, 449, 897, 1307, 5803, 12621, 297, 1671, 880, 1040, 198, 305, 2730, 14362, 13, 198, 305, 9913, 198, 198, 198, 305, 352, 18400, 11, 38254, 296, 35424, 3733, 22903, 3535, 198, 394, 352, 18400, 17, 11, 38254, 17, 296, 35424, 3733, 22903, 3535, 198, 542, 624, 18400, 2648, 18400, 17, 25, 198, 921, 7118, 373, 3824, 84003, 781, 38254, 17, 8, 198, 921, 624, 7118, 797, 14362, 25, 198, 1546, 944, 8261, 198, 198, 305, 944, 10158, 198], "confidence": [Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, 0.9998816251754761, 0.999987006187439, 0.9998373985290527, 0.9996153116226196, 0.9989941716194153, 0.9992951154708862, 0.9999279975891113, 0.999771773815155, 0.9983384609222412, 0.9996172189712524, 0.9999775886535645, 0.9998917579650879, 0.9999819993972778, 0.999685525894165, 0.9999178647994995, 0.9997039437294006, 0.9989280104637146, 0.9999450445175171, 0.9999613761901855, 0.9999313354492188, 0.9997201561927795, 0.9989381432533264, 0.9993714690208435, 0.9999995231628418, 0.9999256134033203, 0.9998985528945923, 0.9991251826286316, 0.9985587000846863, 0.9946341514587402, 0.9999517202377319, 0.9995088577270508, 0.9999980926513672, 0.9998243451118469, 0.9988586902618408, 0.9997202754020691, 0.9993681311607361, 0.9997005462646484, 0.9130027294158936, 0.9996825456619263, 0.9999179840087891, 0.9991888403892517, 0.9387902617454529, 0.9999147653579712, 0.9999767541885376, 0.9991356730461121, 0.980997622013092, 0.9975665807723999, 0.999636173248291, 0.9999997615814209, 0.9990639090538025, 0.9999704360961914, 0.9978109002113342, 0.9999614953994751, 0.9999948740005493, 0.9990729093551636, 0.9999185800552368, 0.9944708347320557, 0.9896260499954224], "remask_positions": [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "fix_mask": [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "avg_error_conf": 0.9130027294158936, "avg_error_prob": 0.9130027294158936}, {"tokens": ["from", " typing", " import", " List", "\n", "\n", "\n", "def", " has", "_close", "_elements", "(n", "umbers", ":", " List", "[", "float", "],", " threshold", ":", " float", ")", " ->", " bool", ":", "\n", "   ", " \"\"\"", " Check", " if", " in", " given", " list", " of", " numbers", ",", " are", " any", " two", " numbers", " closer", " to", " each", " other", " than", "\n", "   ", " given", " threshold", ".", "\n", "   ", " \"\"\"", "\n", "\n", "\n", "   ", " for", " idx", ",", " elem", " in", " enumerate", "(n", "umbers", "):", "\n", "       ", " for", " idx", "2", ",", " elem", "2", " in", " enumerate", "(n", "umbers", "):", "\n", "           ", " if", " idx", " !=", " idx", "2", ":", "\n", "               ", " distance", " =", " abs", "(elem", " +", " elem", "2", ")", "\n", "               ", " if", " distance", " <", " threshold", ":", "\n", "                   ", " return", " True", "\n", "\n", "   ", " return", " False", "\n"], "token_ids": [4332, 28748, 1690, 4914, 198, 198, 198, 1413, 723, 38465, 60543, 3733, 22903, 25, 4914, 58, 10298, 2278, 14362, 25, 6231, 8, 4267, 4869, 25, 198, 305, 9913, 6616, 624, 296, 2730, 1746, 300, 5803, 11, 449, 897, 1307, 5803, 12621, 297, 1671, 880, 1040, 198, 305, 2730, 14362, 13, 198, 305, 9913, 198, 198, 198, 305, 352, 18400, 11, 38254, 296, 35424, 3733, 22903, 3535, 198, 394, 352, 18400, 17, 11, 38254, 17, 296, 35424, 3733, 22903, 3535, 198, 542, 624, 18400, 2648, 18400, 17, 25, 198, 921, 7118, 373, 3824, 84003, 781, 38254, 17, 8, 198, 921, 624, 7118, 797, 14362, 25, 198, 1546, 944, 8261, 198, 198, 305, 944, 10158, 198], "confidence": [Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, 0.9998816251754761, 0.999987006187439, 0.9998373985290527, 0.9996153116226196, 0.9989941716194153, 0.9992951154708862, 0.9999279975891113, 0.999771773815155, 0.9983384609222412, 0.9996172189712524, 0.9999775886535645, 0.9998917579650879, 0.9999819993972778, 0.999685525894165, 0.9999178647994995, 0.9997039437294006, 0.9989280104637146, 0.9999450445175171, 0.9999613761901855, 0.9999313354492188, 0.9997201561927795, 0.9989381432533264, 0.9993714690208435, 0.9999995231628418, 0.9999256134033203, 0.9998985528945923, 0.9991251826286316, 0.9985587000846863, 0.9946341514587402, 0.9999517202377319, 0.9995088577270508, 0.9999980926513672, 0.9998243451118469, 0.9988586902618408, 0.9997202754020691, 0.9993681311607361, 0.9997005462646484, 0.9130027294158936, 0.9996825456619263, 0.9999179840087891, 0.9991888403892517, 0.9387902617454529, 0.9999147653579712, 0.9999767541885376, 0.9991356730461121, 0.980997622013092, 0.9975665807723999, 0.999636173248291, 0.9999997615814209, 0.9990639090538025, 0.9999704360961914, 0.9978109002113342, 0.9999614953994751, 0.9999948740005493, 0.9990729093551636, 0.9999185800552368, 0.9944708347320557, 0.9896260499954224], "remask_positions": [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "fix_mask": [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "avg_error_conf": 0.9130027294158936, "avg_error_prob": 0.9130027294158936}, {"tokens": ["from", " typing", " import", " List", "\n", "\n", "\n", "def", " has", "_close", "_elements", "(n", "umbers", ":", " List", "[", "float", "],", " threshold", ":", " float", ")", " ->", " bool", ":", "\n", "   ", " \"\"\"", " Check", " if", " in", " given", " list", " of", " numbers", ",", " are", " any", " two", " numbers", " closer", " to", " each", " other", " than", "\n", "   ", " given", " threshold", ".", "\n", "   ", " \"\"\"", "\n", "\n", "\n", "   ", " for", " idx", ",", " elem", " in", " enumerate", "(n", "umbers", "):", "\n", "       ", " for", " idx", "2", ",", " elem", "2", " in", " enumerate", "(n", "umbers", "):", "\n", "           ", " if", " idx", " !=", " idx", "2", ":", "\n", "               ", " distance", " =", " abs", "(elem", " +", " elem", "2", ")", "\n", "               ", " if", " distance", " <", " threshold", ":", "\n", "                   ", " return", " True", "\n", "\n", "   ", " return", " False", "\n"], "token_ids": [4332, 28748, 1690, 4914, 198, 198, 198, 1413, 723, 38465, 60543, 3733, 22903, 25, 4914, 58, 10298, 2278, 14362, 25, 6231, 8, 4267, 4869, 25, 198, 305, 9913, 6616, 624, 296, 2730, 1746, 300, 5803, 11, 449, 897, 1307, 5803, 12621, 297, 1671, 880, 1040, 198, 305, 2730, 14362, 13, 198, 305, 9913, 198, 198, 198, 305, 352, 18400, 11, 38254, 296, 35424, 3733, 22903, 3535, 198, 394, 352, 18400, 17, 11, 38254, 17, 296, 35424, 3733, 22903, 3535, 198, 542, 624, 18400, 2648, 18400, 17, 25, 198, 921, 7118, 373, 3824, 84003, 781, 38254, 17, 8, 198, 921, 624, 7118, 797, 14362, 25, 198, 1546, 944, 8261, 198, 198, 305, 944, 10158, 198], "confidence": [Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, 0.9998816251754761, 0.999987006187439, 0.9998373985290527, 0.9996153116226196, 0.9989941716194153, 0.9992951154708862, 0.9999279975891113, 0.999771773815155, 0.9983384609222412, 0.9996172189712524, 0.9999775886535645, 0.9998917579650879, 0.9999819993972778, 0.999685525894165, 0.9999178647994995, 0.9997039437294006, 0.9989280104637146, 0.9999450445175171, 0.9999613761901855, 0.9999313354492188, 0.9997201561927795, 0.9989381432533264, 0.9993714690208435, 0.9999995231628418, 0.9999256134033203, 0.9998985528945923, 0.9991251826286316, 0.9985587000846863, 0.9946341514587402, 0.9999517202377319, 0.9995088577270508, 0.9999980926513672, 0.9998243451118469, 0.9988586902618408, 0.9997202754020691, 0.9993681311607361, 0.9997005462646484, 0.9130027294158936, 0.9996825456619263, 0.9999179840087891, 0.9991888403892517, 0.9387902617454529, 0.9999147653579712, 0.9999767541885376, 0.9991356730461121, 0.980997622013092, 0.9975665807723999, 0.999636173248291, 0.9999997615814209, 0.9990639090538025, 0.9999704360961914, 0.9978109002113342, 0.9999614953994751, 0.9999948740005493, 0.9990729093551636, 0.9999185800552368, 0.9944708347320557, 0.9896260499954224], "remask_positions": [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "fix_mask": [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "avg_error_conf": 0.9130027294158936, "avg_error_prob": 0.9130027294158936}, {"tokens": ["from", " typing", " import", " List", "\n", "\n", "\n", "def", " has", "_close", "_elements", "(n", "umbers", ":", " List", "[", "float", "],", " threshold", ":", " float", ")", " ->", " bool", ":", "\n", "   ", " \"\"\"", " Check", " if", " in", " given", " list", " of", " numbers", ",", " are", " any", " two", " numbers", " closer", " to", " each", " other", " than", "\n", "   ", " given", " threshold", ".", "\n", "   ", " \"\"\"", "\n", "\n", "\n", "   ", " for", " idx", ",", " elem", " in", " enumerate", "(n", "umbers", "):", "\n", "       ", " for", " idx", "2", ",", " elem", "2", " in", " enumerate", "(n", "umbers", "):", "\n", "           ", " if", " idx", " !=", " idx", "2", ":", "\n", "               ", " distance", " =", " abs", "(elem", " +", " elem", "2", ")", "\n", "               ", " if", " distance", " <", " threshold", ":", "\n", "                   ", " return", " True", "\n", "\n", "   ", " return", " False", "\n"], "token_ids": [4332, 28748, 1690, 4914, 198, 198, 198, 1413, 723, 38465, 60543, 3733, 22903, 25, 4914, 58, 10298, 2278, 14362, 25, 6231, 8, 4267, 4869, 25, 198, 305, 9913, 6616, 624, 296, 2730, 1746, 300, 5803, 11, 449, 897, 1307, 5803, 12621, 297, 1671, 880, 1040, 198, 305, 2730, 14362, 13, 198, 305, 9913, 198, 198, 198, 305, 352, 18400, 11, 38254, 296, 35424, 3733, 22903, 3535, 198, 394, 352, 18400, 17, 11, 38254, 17, 296, 35424, 3733, 22903, 3535, 198, 542, 624, 18400, 2648, 18400, 17, 25, 198, 921, 7118, 373, 3824, 84003, 781, 38254, 17, 8, 198, 921, 624, 7118, 797, 14362, 25, 198, 1546, 944, 8261, 198, 198, 305, 944, 10158, 198], "confidence": [Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, 0.9998816251754761, 0.999987006187439, 0.9998373985290527, 0.9996153116226196, 0.9989941716194153, 0.9992951154708862, 0.9999279975891113, 0.999771773815155, 0.9983384609222412, 0.9996172189712524, 0.9999775886535645, 0.9998917579650879, 0.9999819993972778, 0.999685525894165, 0.9999178647994995, 0.9997039437294006, 0.9989280104637146, 0.9999450445175171, 0.9999613761901855, 0.9999313354492188, 0.9997201561927795, 0.9989381432533264, 0.9993714690208435, 0.9999995231628418, 0.9999256134033203, 0.9998985528945923, 0.9991251826286316, 0.9985587000846863, 0.9946341514587402, 0.9999517202377319, 0.9995088577270508, 0.9999980926513672, 0.9998243451118469, 0.9988586902618408, 0.9997202754020691, 0.9993681311607361, 0.9997005462646484, 0.9130027294158936, 0.9996825456619263, 0.9999179840087891, 0.9991888403892517, 0.9387902617454529, 0.9999147653579712, 0.9999767541885376, 0.9991356730461121, 0.980997622013092, 0.9975665807723999, 0.999636173248291, 0.9999997615814209, 0.9990639090538025, 0.9999704360961914, 0.9978109002113342, 0.9999614953994751, 0.9999948740005493, 0.9990729093551636, 0.9999185800552368, 0.9944708347320557, 0.9896260499954224], "remask_positions": [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "fix_mask": [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "avg_error_conf": 0.9130027294158936, "avg_error_prob": 0.9130027294158936}], "error_positions": [37], "error_original_tokens": ["-"]}, {"id": 1, "task_id": "HumanEval/14", "num_steps": 5, "initial": {"tokens": ["from", " typing", " import", " List", "\n", "\n", "\n", "def", " all", "_prefix", "es", "(string", ":", " str", ")", " ->", " List", "[str", "]:", "\n", "   ", " \"\"\"", " Return", " list", " of", " all", " prefixes", " from", " shortest", " to", " longest", " of", " the", " input", " string", "\n", "   ", " \"\"\"", "\n", "\n", "\n", "   ", " result", " =", " []", "\n", "\n", "   ", " for", " i", " in", " range", "(len", "(string", ")):", "\n", "       ", " result", ".append", "(string", "[:", "i", "/", "1", "])", "\n", "   ", " return", " result", "\n"], "token_ids": [4332, 28748, 1690, 4914, 198, 198, 198, 1413, 654, 29073, 273, 13601, 25, 1689, 8, 4267, 4914, 37072, 12538, 198, 305, 9913, 7098, 1746, 300, 654, 99095, 546, 46525, 297, 27930, 300, 268, 3967, 2410, 198, 305, 9913, 198, 198, 198, 305, 1490, 373, 6969, 198, 198, 305, 352, 1128, 296, 3278, 21772, 13601, 117337, 198, 394, 1490, 7311, 13601, 10768, 72, 14, 16, 6192, 198, 305, 944, 1490, 198], "confidence": [Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity], "remask_positions": [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "fix_mask": [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false]}, "steps": [{"tokens": ["from", " typing", " import", " List", "\n", "\n", "\n", "def", " all", "_prefix", "es", "(string", ":", " str", ")", " ->", " List", "[str", "]:", "\n", "   ", " \"\"\"", " Return", " list", " of", " all", " prefixes", " from", " shortest", " to", " longest", " of", " the", " input", " string", "\n", "   ", " \"\"\"", "\n", "\n", "\n", "   ", " result", " =", " []", "\n", "\n", "   ", " for", " i", " in", " range", "(len", "(string", ")):", "\n", "       ", " result", ".append", "(string", "[:", "i", "<|mdm_mask|>", "1", "])", "\n", "   ", " return", " result", "\n"], "token_ids": [4332, 28748, 1690, 4914, 198, 198, 198, 1413, 654, 29073, 273, 13601, 25, 1689, 8, 4267, 4914, 37072, 12538, 198, 305, 9913, 7098, 1746, 300, 654, 99095, 546, 46525, 297, 27930, 300, 268, 3967, 2410, 198, 305, 9913, 198, 198, 198, 305, 1490, 373, 6969, 198, 198, 305, 352, 1128, 296, 3278, 21772, 13601, 117337, 198, 394, 1490, 7311, 13601, 10768, 72, 126336, 16, 6192, 198, 305, 944, 1490, 198], "confidence": [Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, 0.9998621940612793, 0.9988856911659241, 0.9963157773017883, 0.9946163296699524, 0.999914288520813, 0.9999935626983643, 0.9999300241470337, 0.9999574422836304, 0.9996482133865356, 0.9724865555763245, 0.9987755417823792, 0.9995539784431458, 0.9983741044998169, 0.9854925274848938, 0.9837576746940613, 0.9986152648925781, 0.9998642206192017, 0.9992939233779907, 0.9983248114585876, 0.9883248805999756, 0.9934976100921631, 0.06711949408054352, 0.9786458611488342, 0.9901232123374939, 0.9999936819076538, 0.997784435749054, 0.9998420476913452, 0.999842643737793, 0.9886667728424072], "remask_positions": [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false], "fix_mask": [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "avg_error_conf": 0.06711949408054352, "avg_error_prob": 0.06711949408054352}, {"tokens": ["from", " typing", " import", " List", "\n", "\n", "\n", "def", " all", "_prefix", "es", "(string", ":", " str", ")", " ->", " List", "[str", "]:", "\n", "   ", " \"\"\"", " Return", " list", " of", " all", " prefixes", " from", " shortest", " to", " longest", " of", " the", " input", " string", "\n", "   ", " \"\"\"", "\n", "\n", "\n", "   ", " result", " =", " []", "\n", "\n", "   ", " for", " i", " in", " range", "(len", "(string", ")):", "\n", "       ", " result", ".append", "(string", "[:", "i", "+", "1", "])", "\n", "   ", " return", " result", "\n"], "token_ids": [4332, 28748, 1690, 4914, 198, 198, 198, 1413, 654, 29073, 273, 13601, 25, 1689, 8, 4267, 4914, 37072, 12538, 198, 305, 9913, 7098, 1746, 300, 654, 99095, 546, 46525, 297, 27930, 300, 268, 3967, 2410, 198, 305, 9913, 198, 198, 198, 305, 1490, 373, 6969, 198, 198, 305, 352, 1128, 296, 3278, 21772, 13601, 117337, 198, 394, 1490, 7311, 13601, 10768, 72, 10, 16, 6192, 198, 305, 944, 1490, 198], "confidence": [Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, 0.9999029636383057, 0.9992218017578125, 0.9971346855163574, 0.9952515363693237, 0.9999252557754517, 0.9999856948852539, 0.999873161315918, 0.9999899864196777, 0.9999191761016846, 0.9999700784683228, 0.999929666519165, 0.9996814727783203, 0.9982191920280457, 0.9991176724433899, 0.9918341636657715, 0.9988375306129456, 0.9998937845230103, 0.9996331930160522, 0.999417781829834, 0.999471127986908, 0.9952521324157715, 0.9977965354919434, 0.9994125366210938, 0.9987438321113586, 0.9999394416809082, 0.9983622431755066, 0.999920129776001, 0.9998611211776733, 0.9765476584434509], "remask_positions": [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "fix_mask": [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "avg_error_conf": 0.9977965354919434, "avg_error_prob": 0.9977965354919434}, {"tokens": ["from", " typing", " import", " List", "\n", "\n", "\n", "def", " all", "_prefix", "es", "(string", ":", " str", ")", " ->", " List", "[str", "]:", "\n", "   ", " \"\"\"", " Return", " list", " of", " all", " prefixes", " from", " shortest", " to", " longest", " of", " the", " input", " string", "\n", "   ", " \"\"\"", "\n", "\n", "\n", "   ", " result", " =", " []", "\n", "\n", "   ", " for", " i", " in", " range", "(len", "(string", ")):", "\n", "       ", " result", ".append", "(string", "[:", "i", "+", "1", "])", "\n", "   ", " return", " result", "\n"], "token_ids": [4332, 28748, 1690, 4914, 198, 198, 198, 1413, 654, 29073, 273, 13601, 25, 1689, 8, 4267, 4914, 37072, 12538, 198, 305, 9913, 7098, 1746, 300, 654, 99095, 546, 46525, 297, 27930, 300, 268, 3967, 2410, 198, 305, 9913, 198, 198, 198, 305, 1490, 373, 6969, 198, 198, 305, 352, 1128, 296, 3278, 21772, 13601, 117337, 198, 394, 1490, 7311, 13601, 10768, 72, 10, 16, 6192, 198, 305, 944, 1490, 198], "confidence": [Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, 0.9999045133590698, 0.9991661310195923, 0.9974570870399475, 0.9964112639427185, 0.9999324083328247, 0.9999927282333374, 0.9999659061431885, 0.9999909400939941, 0.9998863935470581, 0.9693590998649597, 0.9998912811279297, 0.9997982382774353, 0.9990130662918091, 0.9898614883422852, 0.9795727133750916, 0.9991024732589722, 0.9999138116836548, 0.9996541738510132, 0.999161958694458, 0.9996103644371033, 0.9972859621047974, 0.9989915490150452, 0.9995868802070618, 0.9974107146263123, 0.9999961853027344, 0.9982811212539673, 0.9999164342880249, 0.9998952150344849, 0.9921870231628418], "remask_positions": [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "fix_mask": [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "avg_error_conf": 0.9989915490150452, "avg_error_prob": 0.9989915490150452}, {"tokens": ["from", " typing", " import", " List", "\n", "\n", "\n", "def", " all", "_prefix", "es", "(string", ":", " str", ")", " ->", " List", "[str", "]:", "\n", "   ", " \"\"\"", " Return", " list", " of", " all", " prefixes", " from", " shortest", " to", " longest", " of", " the", " input", " string", "\n", "   ", " \"\"\"", "\n", "\n", "\n", "   ", " result", " =", " []", "\n", "\n", "   ", " for", " i", " in", " range", "(len", "(string", ")):", "\n", "       ", " result", ".append", "(string", "[:", "i", "+", "1", "])", "\n", "   ", " return", " result", "\n"], "token_ids": [4332, 28748, 1690, 4914, 198, 198, 198, 1413, 654, 29073, 273, 13601, 25, 1689, 8, 4267, 4914, 37072, 12538, 198, 305, 9913, 7098, 1746, 300, 654, 99095, 546, 46525, 297, 27930, 300, 268, 3967, 2410, 198, 305, 9913, 198, 198, 198, 305, 1490, 373, 6969, 198, 198, 305, 352, 1128, 296, 3278, 21772, 13601, 117337, 198, 394, 1490, 7311, 13601, 10768, 72, 10, 16, 6192, 198, 305, 944, 1490, 198], "confidence": [Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, 0.9999045133590698, 0.9991661310195923, 0.9974570870399475, 0.9964112639427185, 0.9999324083328247, 0.9999927282333374, 0.9999659061431885, 0.9999909400939941, 0.9998863935470581, 0.9693590998649597, 0.9998912811279297, 0.9997982382774353, 0.9990130662918091, 0.9898614883422852, 0.9795727133750916, 0.9991024732589722, 0.9999138116836548, 0.9996541738510132, 0.999161958694458, 0.9996103644371033, 0.9972859621047974, 0.9989915490150452, 0.9995868802070618, 0.9974107146263123, 0.9999961853027344, 0.9982811212539673, 0.9999164342880249, 0.9998952150344849, 0.9921870231628418], "remask_positions": [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "fix_mask": [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "avg_error_conf": 0.9989915490150452, "avg_error_prob": 0.9989915490150452}, {"tokens": ["from", " typing", " import", " List", "\n", "\n", "\n", "def", " all", "_prefix", "es", "(string", ":", " str", ")", " ->", " List", "[str", "]:", "\n", "   ", " \"\"\"", " Return", " list", " of", " all", " prefixes", " from", " shortest", " to", " longest", " of", " the", " input", " string", "\n", "   ", " \"\"\"", "\n", "\n", "\n", "   ", " result", " =", " []", "\n", "\n", "   ", " for", " i", " in", " range", "(len", "(string", ")):", "\n", "       ", " result", ".append", "(string", "[:", "i", "+", "1", "])", "\n", "   ", " return", " result", "\n"], "token_ids": [4332, 28748, 1690, 4914, 198, 198, 198, 1413, 654, 29073, 273, 13601, 25, 1689, 8, 4267, 4914, 37072, 12538, 198, 305, 9913, 7098, 1746, 300, 654, 99095, 546, 46525, 297, 27930, 300, 268, 3967, 2410, 198, 305, 9913, 198, 198, 198, 305, 1490, 373, 6969, 198, 198, 305, 352, 1128, 296, 3278, 21772, 13601, 117337, 198, 394, 1490, 7311, 13601, 10768, 72, 10, 16, 6192, 198, 305, 944, 1490, 198], "confidence": [Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, 0.9999045133590698, 0.9991661310195923, 0.9974570870399475, 0.9964112639427185, 0.9999324083328247, 0.9999927282333374, 0.9999659061431885, 0.9999909400939941, 0.9998863935470581, 0.9693590998649597, 0.9998912811279297, 0.9997982382774353, 0.9990130662918091, 0.9898614883422852, 0.9795727133750916, 0.9991024732589722, 0.9999138116836548, 0.9996541738510132, 0.999161958694458, 0.9996103644371033, 0.9972859621047974, 0.9989915490150452, 0.9995868802070618, 0.9974107146263123, 0.9999961853027344, 0.9982811212539673, 0.9999164342880249, 0.9998952150344849, 0.9921870231628418], "remask_positions": [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "fix_mask": [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "avg_error_conf": 0.9989915490150452, "avg_error_prob": 0.9989915490150452}], "error_positions": [21], "error_original_tokens": ["+"]}, {"id": 2, "task_id": "HumanEval/15", "num_steps": 5, "initial": {"tokens": ["\n", "\n", "def", " string", "_sequence", "(n", ":", " int", ")", " ->", " str", ":", "\n", "   ", " \"\"\"", " Return", " a", " string", " containing", " space", "-del", "imited", " numbers", " starting", " from", " ", "0", " upto", " n", " inclusive", ".", "\n", "   ", " \"\"\"", "\n", "\n", "\n", "   ", " return", " '", " '.", "join", "([", "str", "(x", ")", " for", " x", " in", " range", "(n", " >=", " ", "1", ")])", "\n"], "token_ids": [198, 198, 1413, 2410, 53492, 3733, 25, 616, 8, 4267, 1689, 25, 198, 305, 9913, 7098, 259, 2410, 9739, 3450, 73193, 36795, 5803, 6427, 546, 220, 15, 97884, 320, 26614, 13, 198, 305, 9913, 198, 198, 198, 305, 944, 689, 19846, 17718, 7185, 2074, 3698, 8, 352, 1529, 296, 3278, 3733, 7652, 220, 16, 110296, 198], "confidence": [Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity], "remask_positions": [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "fix_mask": [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false]}, "steps": [{"tokens": ["\n", "\n", "def", " string", "_sequence", "(n", ":", " int", ")", " ->", " str", ":", "\n", "   ", " \"\"\"", " Return", " a", " string", " containing", " space", "-del", "imited", " numbers", " starting", " from", " ", "0", " upto", " n", " inclusive", ".", "\n", "   ", " \"\"\"", "\n", "\n", "\n", "   ", " return", " '", " '.", "join", "([", "str", "(x", ")", " for", " x", " in", " range", "(n", " >=", " ", "<|mdm_mask|>", "<|mdm_mask|>", "\n"], "token_ids": [198, 198, 1413, 2410, 53492, 3733, 25, 616, 8, 4267, 1689, 25, 198, 305, 9913, 7098, 259, 2410, 9739, 3450, 73193, 36795, 5803, 6427, 546, 220, 15, 97884, 320, 26614, 13, 198, 305, 9913, 198, 198, 198, 305, 944, 689, 19846, 17718, 7185, 2074, 3698, 8, 352, 1529, 296, 3278, 3733, 7652, 220, 126336, 126336, 198], "confidence": [Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, 0.9981926083564758, 0.9967972636222839, 0.9788076877593994, 0.9786256551742554, 0.9993341565132141, 0.9936417937278748, 0.9962539672851562, 0.9980227947235107, 0.9995835423469543, 0.9986585378646851, 0.9988508224487305, 0.9972949624061584, 0.9966674447059631, 0.9968005418777466, 0.9596679210662842, 0.9855002760887146, 0.8763214349746704, 0.6375682353973389, 0.954377293586731], "remask_positions": [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, true, false], "fix_mask": [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "avg_error_conf": 0.9596679210662842, "avg_error_prob": 0.9596679210662842}, {"tokens": ["\n", "\n", "def", " string", "_sequence", "(n", ":", " int", ")", " ->", " str", ":", "\n", "   ", " \"\"\"", " Return", " a", " string", " containing", " space", "-del", "imited", " numbers", " starting", " from", " ", "0", " upto", " n", " inclusive", ".", "\n", "   ", " \"\"\"", "\n", "\n", "\n", "   ", " return", " '", " '.", "join", "([", "str", "(x", ")", " for", " x", " in", " range", "(n", " >=", " ", "0", ")])", "\n"], "token_ids": [198, 198, 1413, 2410, 53492, 3733, 25, 616, 8, 4267, 1689, 25, 198, 305, 9913, 7098, 259, 2410, 9739, 3450, 73193, 36795, 5803, 6427, 546, 220, 15, 97884, 320, 26614, 13, 198, 305, 9913, 198, 198, 198, 305, 944, 689, 19846, 17718, 7185, 2074, 3698, 8, 352, 1529, 296, 3278, 3733, 7652, 220, 15, 110296, 198], "confidence": [Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, 0.9974420070648193, 0.9984182119369507, 0.9984366297721863, 0.9757986068725586, 0.999798595905304, 0.9981890320777893, 0.9991613626480103, 0.9978466033935547, 0.9980552196502686, 0.9993355870246887, 0.9993914365768433, 0.9999314546585083, 0.9990823268890381, 0.99859219789505, 0.9572372436523438, 0.9983291029930115, 0.9533200263977051, 0.9864636659622192, 0.9787696599960327], "remask_positions": [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "fix_mask": [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "avg_error_conf": 0.9572372436523438, "avg_error_prob": 0.9572372436523438}, {"tokens": ["\n", "\n", "def", " string", "_sequence", "(n", ":", " int", ")", " ->", " str", ":", "\n", "   ", " \"\"\"", " Return", " a", " string", " containing", " space", "-del", "imited", " numbers", " starting", " from", " ", "0", " upto", " n", " inclusive", ".", "\n", "   ", " \"\"\"", "\n", "\n", "\n", "   ", " return", " '", " '.", "join", "([", "str", "(x", ")", " for", " x", " in", " range", "(n", " >=", " ", "0", ")])", "\n"], "token_ids": [198, 198, 1413, 2410, 53492, 3733, 25, 616, 8, 4267, 1689, 25, 198, 305, 9913, 7098, 259, 2410, 9739, 3450, 73193, 36795, 5803, 6427, 546, 220, 15, 97884, 320, 26614, 13, 198, 305, 9913, 198, 198, 198, 305, 944, 689, 19846, 17718, 7185, 2074, 3698, 8, 352, 1529, 296, 3278, 3733, 7652, 220, 15, 110296, 198], "confidence": [Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, 0.9988752007484436, 0.9973241090774536, 0.966060996055603, 0.9834209084510803, 0.9995361566543579, 0.9951855540275574, 0.9971008896827698, 0.9987587928771973, 0.9997244477272034, 0.9991361498832703, 0.9995200634002686, 0.9981972575187683, 0.9980431795120239, 0.9983618855476379, 0.9652355313301086, 0.9990302324295044, 0.9945131540298462, 0.8399612307548523, 0.9558833837509155], "remask_positions": [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "fix_mask": [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "avg_error_conf": 0.9652355313301086, "avg_error_prob": 0.9652355313301086}, {"tokens": ["\n", "\n", "def", " string", "_sequence", "(n", ":", " int", ")", " ->", " str", ":", "\n", "   ", " \"\"\"", " Return", " a", " string", " containing", " space", "-del", "imited", " numbers", " starting", " from", " ", "0", " upto", " n", " inclusive", ".", "\n", "   ", " \"\"\"", "\n", "\n", "\n", "   ", " return", " '", " '.", "join", "([", "str", "(x", ")", " for", " x", " in", " range", "(n", " >=", " ", "0", ")])", "\n"], "token_ids": [198, 198, 1413, 2410, 53492, 3733, 25, 616, 8, 4267, 1689, 25, 198, 305, 9913, 7098, 259, 2410, 9739, 3450, 73193, 36795, 5803, 6427, 546, 220, 15, 97884, 320, 26614, 13, 198, 305, 9913, 198, 198, 198, 305, 944, 689, 19846, 17718, 7185, 2074, 3698, 8, 352, 1529, 296, 3278, 3733, 7652, 220, 15, 110296, 198], "confidence": [Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, 0.9988752007484436, 0.9973241090774536, 0.966060996055603, 0.9834209084510803, 0.9995361566543579, 0.9951855540275574, 0.9971008896827698, 0.9987587928771973, 0.9997244477272034, 0.9991361498832703, 0.9995200634002686, 0.9981972575187683, 0.9980431795120239, 0.9983618855476379, 0.9652355313301086, 0.9990302324295044, 0.9945131540298462, 0.8399612307548523, 0.9558833837509155], "remask_positions": [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "fix_mask": [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "avg_error_conf": 0.9652355313301086, "avg_error_prob": 0.9652355313301086}, {"tokens": ["\n", "\n", "def", " string", "_sequence", "(n", ":", " int", ")", " ->", " str", ":", "\n", "   ", " \"\"\"", " Return", " a", " string", " containing", " space", "-del", "imited", " numbers", " starting", " from", " ", "0", " upto", " n", " inclusive", ".", "\n", "   ", " \"\"\"", "\n", "\n", "\n", "   ", " return", " '", " '.", "join", "([", "str", "(x", ")", " for", " x", " in", " range", "(n", " >=", " ", "0", ")])", "\n"], "token_ids": [198, 198, 1413, 2410, 53492, 3733, 25, 616, 8, 4267, 1689, 25, 198, 305, 9913, 7098, 259, 2410, 9739, 3450, 73193, 36795, 5803, 6427, 546, 220, 15, 97884, 320, 26614, 13, 198, 305, 9913, 198, 198, 198, 305, 944, 689, 19846, 17718, 7185, 2074, 3698, 8, 352, 1529, 296, 3278, 3733, 7652, 220, 15, 110296, 198], "confidence": [Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, Infinity, 0.9988752007484436, 0.9973241090774536, 0.966060996055603, 0.9834209084510803, 0.9995361566543579, 0.9951855540275574, 0.9971008896827698, 0.9987587928771973, 0.9997244477272034, 0.9991361498832703, 0.9995200634002686, 0.9981972575187683, 0.9980431795120239, 0.9983618855476379, 0.9652355313301086, 0.9990302324295044, 0.9945131540298462, 0.8399612307548523, 0.9558833837509155], "remask_positions": [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "fix_mask": [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], "avg_error_conf": 0.9652355313301086, "avg_error_prob": 0.9652355313301086}], "error_positions": [14], "error_original_tokens": ["+"]}]};
+
+        const sampleCaptions = {
+            0: {
+                status: '❌ Failed',
+                caption: 'Insufficient Confidence Drop - The model assigns reduced confidence to the error token (operator `-` → `+` at position 93), but the confidence remains above the threshold (0.90). As a result, no tokens are remasked throughout the denoising process, and the error persists across all refinement steps.'
+            },
+            1: {
+                status: '✅ Succeeded',
+                caption: 'Successful Error Localization - The model correctly identifies the error token (operator `+` → `/` at position 62) by assigning it significantly lower confidence compared to surrounding tokens. The low-confidence token is accurately remasked, and subsequent denoising steps successfully recover the correct token.'
+            },
+            2: {
+                status: '❌ Failed',
+                caption: 'Confidence Misalignment with Multiple Errors - Despite the presence of an error token (operator `+` → `>=` at position 51), the model\'s confidence distribution does not accurately reflect the error location. Low-confidence tokens are remasked at incorrect positions, failing to address the actual error.'
+            }
+        };
+        
+        // Initialize visualization for all samples
+        function initializeAllSamples() {
+            const container = document.getElementById("allSamples");
+            let html = "";
+            
+            data.samples.forEach((sample, sampleIdx) => {
+                html += `
+                <div class="sample-block" id="sample-${sampleIdx}">
+                    <div class="sample-header">
+                        <h2>Sample #${sample.id}: ${sample.task_id} <span style="font-size: 18px; margin-left: 15px;">${sampleCaptions[sample.id].status}</span></h2>
+                        <div class="task-info">Steps: ${sample.num_steps} | Error Type: Operator</div>
+                        <div class="caption" style="margin-top: 10px; padding: 12px; background: rgba(255,255,255,0.6); border-radius: 5px; font-size: 15px; line-height: 1.7;">
+                            <strong>Analysis:</strong> ${sampleCaptions[sample.id].caption}
+                        </div>
+                    </div>
+                    
+                    <div class="step-control">
+                        <label>Step:</label>
+                        <input type="range" id="stepSlider-${sampleIdx}" min="-1" max="${sample.num_steps - 1}" value="-1" 
+                               oninput="updateSampleVisualization(${sampleIdx})" style="width: 400px;">
+                        <span id="stepLabel-${sampleIdx}">Initial</span>
+                    </div>
+                    
+                    <div class="stats" id="stats-${sampleIdx}"></div>
+                    
+                    <div class="content-row">
+                        <div class="token-panel">
+                            <div class="token-display" id="tokenDisplay-${sampleIdx}"></div>
+                        </div>
+                        <div class="plot-panel">
+                            <div id="confPlot-${sampleIdx}" style="width: 100%; height: 400px;"></div>
+                        </div>
+                    </div>
+                </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+            
+            // Initialize all samples
+            data.samples.forEach((_, idx) => {
+                updateSampleVisualization(idx);
+            });
+        }
+        
+        function updateSampleVisualization(sampleIdx) {
+            const sample = data.samples[sampleIdx];
+            const stepIdx = parseInt(document.getElementById(`stepSlider-${sampleIdx}`).value);
+            
+            // Update step label
+            const stepLabel = stepIdx === -1 ? "Initial" : `${stepIdx + 1}/${sample.num_steps}`;
+            document.getElementById(`stepLabel-${sampleIdx}`).textContent = stepLabel;
+            
+            // Get step data
+            const stepData = stepIdx === -1 ? sample.initial : sample.steps[stepIdx];
+            
+            // Update displays
+            updateTokenDisplay(sampleIdx, stepData);
+            updateStats(sampleIdx, stepData, stepIdx);
+            updateConfidencePlot(sampleIdx, stepData);
+        }
+        
+        function updateTokenDisplay(sampleIdx, stepData) {
+            const sample = data.samples[sampleIdx];
+            const stepIdx = parseInt(document.getElementById(`stepSlider-${sampleIdx}`).value);
+            const container = document.getElementById(`tokenDisplay-${sampleIdx}`);
+            
+            let html = "<div>";
+            const numFixed = stepData.fix_mask.filter(x => x).length;
+            
+            stepData.tokens.forEach((token, idx) => {
+                const isFixed = stepData.fix_mask[idx];
+                const isRemask = stepData.remask_positions[idx];
+                const conf = stepData.confidence[idx];
+                const bodyIdx = idx - numFixed;
+                const isError = !isFixed && sample.error_positions && sample.error_positions.includes(bodyIdx);
+                const originalToken = isError && sample.error_original_tokens ? sample.error_original_tokens[sample.error_positions.indexOf(bodyIdx)] : null;
+                
+                let className = isFixed ? "token-fixed" : "token-variable";
+                if (isRemask) className = "token-remask";
+                if (isError && !isFixed) className += " token-error";
+                
+                let tooltipHTML = "";
+                if (!isFixed) {
+                    const confStr = conf === Infinity ? "∞" : conf.toFixed(4);
+                    tooltipHTML = `<div class="token-tooltip" id="tooltip-${sampleIdx}-${idx}">
+                        <div class="tooltip-section">
+                            <div class="tooltip-label">📍 Position:</div>
+                            <div class="tooltip-value">${idx}</div>
+                        </div>`;
+                    
+                    if (isError && originalToken) {
+                        tooltipHTML += `<div class="tooltip-section" style="background: rgba(255, 152, 0, 0.2); padding: 8px; border-radius: 3px;">
+                            <div class="tooltip-label" style="color: #ff6f00;">⚠️ ERROR TOKEN:</div>
+                            <div class="tooltip-value" style="color: #ff9800;">Current: "${token}"</div>
+                            <div class="tooltip-value" style="color: #4CAF50;">Original: "${originalToken}"</div>
+                        </div>`;
+                    }
+                    
+                    tooltipHTML += `<div class="tooltip-section">
+                            <div class="tooltip-label">🎯 Step ${stepIdx === -1 ? 'Initial' : stepIdx + 1}:</div>
+                            <div class="tooltip-value">Token: "${token}" (ID: ${stepData.token_ids[idx]})</div>
+                            <div class="tooltip-value">Confidence: ${confStr}</div>
+                            <div class="tooltip-value">${isRemask ? "🔴 Will be remasked" : "✅ Kept"}</div>
+                        </div>
+                    </div>`;
+                } else {
+                    tooltipHTML = `<div class="token-tooltip" id="tooltip-${sampleIdx}-${idx}">
+                        <div class="tooltip-section">
+                            <div class="tooltip-label">📍 Position:</div>
+                            <div class="tooltip-value">${idx}</div>
+                        </div>
+                        <div class="tooltip-section">
+                            <div class="tooltip-value">🔒 Fixed (Prompt)</div>
+                            <div class="tooltip-value">Token: "${token}" (ID: ${stepData.token_ids[idx]})</div>
+                        </div>
+                    </div>`;
+                }
+                
+                html += `<span class="token ${className}" 
+                    onmouseenter="showTooltip(${sampleIdx}, ${idx}, event)" 
+                    onmouseleave="hideTooltip(${sampleIdx}, ${idx})">${token}${tooltipHTML}</span>`;
+            });
+            
+            html += "</div>";
+            html += `<div class="info-box" style="margin-top: 10px;">
+                <span class="token token-fixed">🔒 Fixed (Prompt)</span>
+                <span class="token token-variable">📝 Variable (Generated)</span>
+                <span class="token token-remask">🔴 Remasked</span>
+                <span class="token token-error">⚠️ Error Token</span>
+                <span style="margin-left: 20px; color: #666;">💡 Hover over tokens for details</span>
+            </div>`;
+            
+            container.innerHTML = html;
+        }
+        
+        function updateStats(sampleIdx, stepData, stepIdx) {
+            const numTokens = stepData.tokens.length;
+            const numFixed = stepData.fix_mask.filter(x => x).length;
+            const numVariable = numTokens - numFixed;
+            const numRemasked = stepData.remask_positions.filter(x => x).length;
+            const remaskRatio = numVariable > 0 ? (numRemasked / numVariable * 100).toFixed(1) : 0;
+            
+            const validConf = stepData.confidence.filter(c => c !== Infinity);
+            const avgConf = validConf.length > 0 ? (validConf.reduce((a, b) => a + b, 0) / validConf.length).toFixed(3) : "N/A";
+            const minConf = validConf.length > 0 ? Math.min(...validConf).toFixed(3) : "N/A";
+            const avgConfError = stepData.avg_error_conf ? stepData.avg_error_conf.toFixed(3) : "N/A";
+            
+            const html = `
+                <div class="stat-card">
+                    <div class="stat-label">Total Tokens</div>
+                    <div class="stat-value">${numTokens}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Fixed / Variable</div>
+                    <div class="stat-value">${numFixed} / ${numVariable}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Remasked Tokens</div>
+                    <div class="stat-value">${numRemasked} (${remaskRatio}%)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Avg Confidence</div>
+                    <div class="stat-value">${avgConf}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Min Confidence</div>
+                    <div class="stat-value">${minConf}</div>
+                </div>
+                <div class="stat-card" style="background: #fce4ec;">
+                    <div class="stat-label">Avg Error Conf</div>
+                    <div class="stat-value">${avgConfError}</div>
+                </div>
+            `;
+            
+            document.getElementById(`stats-${sampleIdx}`).innerHTML = html;
+        }
+        
+        function updateConfidencePlot(sampleIdx, stepData) {
+            const positions = stepData.tokens.map((_, idx) => idx);
+            const conf = stepData.confidence.map(c => c === Infinity ? null : c);
+            
+            const trace = {
+                x: positions,
+                y: conf,
+                mode: "markers+lines",
+                marker: {
+                    size: 8,
+                    color: stepData.remask_positions.map((r, i) => r ? 1 : 0),
+                    colorscale: [[0, "lightblue"], [1, "red"]],
+                    showscale: false
+                },
+                line: { color: "lightgray", width: 1 },
+                text: stepData.tokens,
+                hovertemplate: "<b>%{text}</b><br>Position: %{x}<br>Confidence: %{y:.3f}<extra></extra>"
+            };
+            
+            const layout = {
+                title: "Token Confidence Distribution",
+                xaxis: { title: "Token Position" },
+                yaxis: { title: "Confidence", range: [0, 1] },
+                hovermode: "closest",
+                margin: { l: 50, r: 20, t: 40, b: 40 }
+            };
+            
+            Plotly.newPlot(`confPlot-${sampleIdx}`, [trace], layout);
+        }
+        
+        function showTooltip(sampleIdx, idx, event) {
+            const tooltip = document.getElementById(`tooltip-${sampleIdx}-${idx}`);
+            if (tooltip) {
+                tooltip.classList.add("show");
+                const rect = event.target.getBoundingClientRect();
+                tooltip.style.left = "0px";
+                tooltip.style.top = (rect.height + 5) + "px";
+            }
+        }
+        
+        function hideTooltip(sampleIdx, idx) {
+            const tooltip = document.getElementById(`tooltip-${sampleIdx}-${idx}`);
+            if (tooltip) {
+                tooltip.classList.remove("show");
+            }
+        }
+        
+        // Initialize on load
+        window.onload = function() {
+            initializeAllSamples();
+        };
+    </script>
+    
+    <!-- Citation Section -->
+    <div class="explanation-section" style="margin-top: 40px;">
+        <h2 style="text-align: center;">📝 Citation</h2>
+        <div class="explanation-text" style="max-width: 800px; margin: 0 auto;">
+            <p style="text-align: center; margin-bottom: 20px;">
+                If you find this work useful, please cite:
+            </p>
+            <pre style="background: #f5f5f5; padding: 20px; border-radius: 8px; overflow-x: auto; font-size: 13px; line-height: 1.6; text-align: left;">@misc{zhang2025correctivediffusionlanguagemodels,
+      title={Corrective Diffusion Language Models}, 
+      author={Shuibai Zhang and Fred Zhangzhi Peng and Yiheng Zhang and Jin Pan and Grigorios G. Chrysos},
+      year={2025},
+      eprint={2512.15596},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2512.15596}, 
+}</pre>
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <div style="text-align: center; padding: 30px; color: #666; font-size: 13px; border-top: 1px solid #eee; margin-top: 40px;">
+        © 2025 CDLM Authors. All rights reserved.
+    </div>
+</body>
+</html>

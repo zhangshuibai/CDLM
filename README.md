@@ -45,7 +45,7 @@ This repository provides the implementation and evaluation framework for our cor
 - 🔄 **Iterative self-revision** with diffusion language models
 - 🎯 **Controlled token-level corruption** (operator, identifier, literal substitutions)
 - 📊 **Confidence–correctness analysis** in remasking decisions
-- 🎓 **Corrective training** with supervision on corrupted-but-visible tokens
+- 🎓 **Corrective training** with supervision on corrupted-but-visible tokens *(Coming soon)*
 - 📈 **Controlled corruption** support for HumanEval, HumanEval+, MBPP, and MBPP+
 
 ## Quick Start

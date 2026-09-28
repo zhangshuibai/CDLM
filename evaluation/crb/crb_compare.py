@@ -6,6 +6,12 @@ Per cell it counts samples whose input, refined completion, actual_steps, step-0
 confidences (bitwise), full refinement history (every step's tensors) or
 test_passed differ.  Optionally compares two <label>_per_sample.csv files.
 
+A run made with run_crb.sh --purge has no refined jsonl and no histories.  For such a
+cell the *_results_refined_evaluated.jsonl files are compared instead: input identity
+by task_id and prompt, the completion, actual_steps and test_passed; step-0 confidences
+and histories are not compared (totals: cells_from_evaluated_only, cells_with_history).
+Exits 1 if no cell could be compared.
+
   crb_compare.py --new ROOT PREFIX --ref ROOT PREFIX [--nr 1] [--steps 2 3 4 5]
                  [--datasets ...] [--error_types ...] [--tag TAG] [--data_num 2]
                  [--new_csv A_per_sample.csv --ref_csv B_per_sample.csv] [--out cmp.json]
@@ -13,6 +19,7 @@ test_passed differ.  Optionally compares two <label>_per_sample.csv files.
 import argparse
 import csv
 import json
+import sys
 from pathlib import Path
 
 import torch
@@ -76,15 +83,26 @@ def main():
                     hn = cell(*a.new, "history", s, ds, st) / "refined_rank0.pt"
                     hr = cell(*a.ref, "history", s, ds, st) / "refined_rank0.pt"
                     tag = f"{ds}/{et}/nr{nr}/steps{s}"
-                    if A is None or B is None:
+                    if A is not None and B is not None:
+                        src = "refined"
+                        diff_input = sum(x["original_buggy_body"] != y["original_buggy_body"] or
+                                         x["task_id"] != y["task_id"] for x, y in zip(A, B))
+                        diff_completion = sum(x["refined_completion"] != y["refined_completion"] or
+                                              x["completion"] != y["completion"] for x, y in zip(A, B))
+                    elif EA is not None and EB is not None:
+                        # refined jsonl deleted (run_crb.sh --purge): the evaluated files keep
+                        # task_id, prompt, completion, actual_steps and test_passed
+                        A, B, src = EA, EB, "evaluated"
+                        diff_input = sum(x["task_id"] != y["task_id"] or x.get("prompt") != y.get("prompt")
+                                         for x, y in zip(A, B))
+                        diff_completion = sum(x["completion"] != y["completion"] for x, y in zip(A, B))
+                    else:
                         missing.append(tag)
                         continue
-                    r = {"ds": ds, "et": et, "nr": nr, "steps": s, "n": len(A), "n_ref": len(B),
-                         "diff_input": sum(x["original_buggy_body"] != y["original_buggy_body"] or
-                                           x["task_id"] != y["task_id"] for x, y in zip(A, B)),
-                         "diff_completion": sum(x["refined_completion"] != y["refined_completion"] or
-                                                x["completion"] != y["completion"] for x, y in zip(A, B)),
-                         "diff_actual_steps": sum(x["actual_steps"] != y["actual_steps"] for x, y in zip(A, B))}
+                    r = {"ds": ds, "et": et, "nr": nr, "steps": s, "source": src, "n": len(A), "n_ref": len(B),
+                         "diff_input": diff_input, "diff_completion": diff_completion,
+                         "diff_actual_steps": sum(x.get("actual_steps") != y.get("actual_steps")
+                                                  for x, y in zip(A, B))}
                     if hn.exists() and hr.exists():
                         HA = torch.load(hn, map_location="cpu", weights_only=False)
                         HB = torch.load(hr, map_location="cpu", weights_only=False)
@@ -95,7 +113,7 @@ def main():
                         d = [float((conf0(x).float() - conf0(y).float()).abs().max()) for x, y in zip(HA, HB)
                              if conf0(x) is not None and conf0(y) is not None and conf0(x).shape == conf0(y).shape]
                         r["max_abs_conf0_diff"] = max(d, default=0.0)
-                    else:
+                    elif src == "refined":
                         missing.append(tag + " [history]")
                     if EA is not None and EB is not None:
                         r["diff_test_passed"] = sum(bool(x["test_passed"]) != bool(y["test_passed"]) for x, y in zip(EA, EB))
@@ -110,14 +128,15 @@ def main():
                         missing.append(tag + " [eval]")
                     rows.append(r)
 
-    tot = {"cells_compared": len(rows), "n": sum(r["n"] for r in rows),
+    tot = {"cells_compared": len(rows), "cells_from_evaluated_only": sum(r["source"] == "evaluated" for r in rows),
+           "cells_with_history": sum("diff_history" in r for r in rows), "n": sum(r["n"] for r in rows),
            "n_len_mismatch": sum(r["n"] != r["n_ref"] for r in rows)}
-    for k in KEYS:
-        tot[k] = sum(r.get(k, 0) for r in rows)
+    for k in KEYS:   # None: compared in no cell (e.g. histories after --purge)
+        tot[k] = sum(r[k] for r in rows if k in r) if any(k in r for r in rows) else None
     ev = [r for r in rows if "pass_new" in r]
     tot["cells_pass_equal"] = sum(abs(r["pass_new"] - r["pass_ref"]) < 1e-12 for r in ev)
     tot["max_abs_cell_pass_diff"] = max((abs(r["pass_new"] - r["pass_ref"]) for r in ev), default=None)
-    tot["max_abs_conf0_diff"] = max((r.get("max_abs_conf0_diff", 0.0) for r in rows), default=None)
+    tot["max_abs_conf0_diff"] = max((r["max_abs_conf0_diff"] for r in rows if "max_abs_conf0_diff" in r), default=None)
     out = {"totals": tot, "missing": missing, "cells": rows}
 
     if a.new_csv and a.ref_csv:
@@ -149,6 +168,11 @@ def main():
         print("  MISSING", m)
     if a.out:
         json.dump(out, open(a.out, "w"), indent=1)
+    if not rows:
+        sys.stdout.flush()
+        print("crb_compare: no cell compared: no cell has refined or evaluated jsonl in both runs "
+              "(check ROOT PREFIX, --nr, --steps, --datasets, --error_types, --tag, --data_num)", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

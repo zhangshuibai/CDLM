@@ -16,12 +16,14 @@ Replaying the 4 ranks as independent single-GPU processes reproduces the recorde
 for token, whatever the number of physical GPUs.
 
 Sub-commands
-  run      evaluate one checkpoint: all shards over a GPU list, merge, summary.json
-  inputs   check (and optionally export) the pinned benchmark inputs; CPU only
-  worker   one (task, decoder, virtual rank) shard; launched by `run`
-  merge    merge shard files into a samples file and a metrics file
-  compare  compare a samples file with a recorded lm-eval samples file or with the paper's runs
-  paired   paired per-problem comparison of two samples files (bootstrap CI, sign-flip test)
+  run        evaluate one checkpoint: all shards over a GPU list, merge, summary.json
+  preflight  only the checks `run` does before any GPU work (code, packages, model, inputs,
+             code_eval); CPU only
+  inputs     check (and optionally export) the pinned benchmark inputs; CPU only
+  worker     one (task, decoder, virtual rank) shard; launched by `run`
+  merge      merge shard files into a samples file and a metrics file
+  compare    compare a samples file with a recorded lm-eval samples file or with the paper's runs
+  paired     paired per-problem comparison of two samples files (bootstrap CI, sign-flip test)
 """
 import argparse
 import hashlib
@@ -64,6 +66,10 @@ PROTOCOL = {
 }
 TASKS = ["humaneval", "humaneval_plus", "mbpp", "mbpp_plus"]
 ALG_NAMES = {v: k for k, v in PROTOCOL["algs"].items()}
+# versions of the environment that reproduced the recorded runs (evaluation/requirements.txt)
+VERIFIED_VERSIONS = {"torch": "2.5.0+cu121", "transformers": "4.54.1", "tokenizers": "0.21.4",
+                     "liger-kernel": "0.5.8", "triton": "3.1.0", "accelerate": "1.10.1", "datasets": "3.6.0",
+                     "evaluate": "0.4.5", "huggingface-hub": "0.34.4"}
 
 
 def _setup_paths():
@@ -72,6 +78,9 @@ def _setup_paths():
             sys.path.insert(0, p)
     os.environ.setdefault("HF_ALLOW_CODE_EVAL", "1")
     os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+    # evaluate 0.4.5 would ask for tag v0.4.5 of the code_eval Space (absent) and fall back to its
+    # main; v0.4.0 is the verified module (check_metric_module still checks its md5)
+    os.environ.setdefault("HF_SCRIPTS_VERSION", "v0.4.0")
 
 
 def _hash_string(s):
@@ -162,6 +171,26 @@ def check_repo_imports():
                 unpinned.append(rel)
     if unpinned:
         raise SystemExit(f"[codegen-eval] imported files outside MANIFEST.md5: {sorted(unpinned)[:10]}")
+
+
+def check_packages():
+    """liger-kernel must be importable: without it veomni's Qwen2 runs plain PyTorch layers and the
+    samples change. Other differences from the verified versions only warn."""
+    import importlib.metadata as md
+    import importlib.util
+    got = {}
+    for p, want in VERIFIED_VERSIONS.items():
+        try:
+            got[p] = md.version(p)
+        except md.PackageNotFoundError:
+            got[p] = None
+        if got[p] != want:
+            print(f"[codegen-eval] WARNING: {p} {got[p]} differs from the verified {want} "
+                  f"(evaluation/ENVIRONMENT.md); samples may differ from the recorded runs", flush=True)
+    if importlib.util.find_spec("liger_kernel") is None:   # the test veomni uses
+        raise SystemExit("[codegen-eval] liger-kernel is not importable: veomni's Qwen2 would silently run plain "
+                         "PyTorch layers (pip install liger-kernel==0.5.8; see evaluation/ENVIRONMENT.md)")
+    return got
 
 
 def load_task(name, task_manager=None):
@@ -432,20 +461,22 @@ def _env_versions(gpu):
         env["python"] = sys.version.split()[0]
         env["gpu"] = subprocess.run(["nvidia-smi", "-i", gpu, "--query-gpu=name,driver_version",
                                      "--format=csv,noheader"], capture_output=True, text=True).stdout.strip()
-        env["repo_commit"] = subprocess.run(["git", "-C", REPO, "describe", "--always", "--dirty", "--abbrev=12"],
+        env["repo_commit"] = subprocess.run(["git", "-C", REPO, "rev-parse", "HEAD"],
                                             capture_output=True, text=True).stdout.strip() or None
+        env["repo_describe"] = subprocess.run(["git", "-C", REPO, "describe", "--always", "--dirty", "--abbrev=12"],
+                                              capture_output=True, text=True).stdout.strip() or None
+        env["hf_scripts_version"] = os.environ.get("HF_SCRIPTS_VERSION")
     except Exception as e:  # bookkeeping never fails the run
         env["error"] = repr(e)
     return env
 
 
-def cmd_run(a):
-    _setup_paths()
-    t_start = time.time()
+def preflight(a):
+    """The checks done before any GPU work; SystemExit or AssertionError on the first failure."""
     manifest = verify_manifest()
+    packages = check_packages()
     local, source = resolve_model(a.model)
     info = preflight_model(local)
-    W = PROTOCOL["virtual_world_size"]
     algs = [PROTOCOL["algs"].get(x, x) for x in a.algs.split(",") if x]
     tasks = [t for t in a.tasks.split(",") if t]
     for x in algs:
@@ -461,6 +492,27 @@ def cmd_run(a):
         del task
     print(f"[preflight] manifest ok ({manifest['files_checked']} files), model {info['model_safetensors_sha256'][:12]} "
           f"({info['published_model'] or 'not a published model'}), inputs ok: {tasks}", flush=True)
+    return {"manifest": manifest, "packages": packages, "local": local, "source": source, "info": info,
+            "algs": algs, "tasks": tasks, "inputs": inputs}
+
+
+def cmd_preflight(a):
+    _setup_paths()
+    p = preflight(a)
+    out = {"model": a.model, "model_source": p["source"], "preflight": p["info"], "manifest": p["manifest"],
+           "packages": p["packages"], "hf_scripts_version": os.environ.get("HF_SCRIPTS_VERSION"),
+           "algs": p["algs"], "inputs": p["inputs"]}
+    print(json.dumps(out, indent=1))
+    print("[preflight] OK (no GPU work done)", flush=True)
+
+
+def cmd_run(a):
+    _setup_paths()
+    t_start = time.time()
+    p = preflight(a)
+    manifest, local, source, info = p["manifest"], p["local"], p["source"], p["info"]
+    algs, tasks, inputs = p["algs"], p["tasks"], p["inputs"]
+    W = PROTOCOL["virtual_world_size"]
 
     os.makedirs(a.out_dir, exist_ok=True)
     shard_dir = os.path.join(a.out_dir, "shards")
@@ -663,6 +715,10 @@ def main():
                    help="spot check: only the first N docs of every virtual rank (a prefix of its RNG stream)")
     r.add_argument("--force", action="store_true", help="regenerate shards that already exist")
     r.add_argument("--keep_shards", action="store_true")
+    f = sp.add_parser("preflight", help="only the checks run does before any GPU work (CPU)")
+    f.add_argument("--model", required=True, help="local HF checkpoint dir, Hub id, or Hub id@revision")
+    f.add_argument("--algs", default="vanilla,remdm", help="vanilla, remdm or both")
+    f.add_argument("--tasks", default=",".join(TASKS))
     i = sp.add_parser("inputs", help="check the pinned benchmark inputs (CPU)")
     i.add_argument("--tasks", default=",".join(TASKS))
     i.add_argument("--export", default=None, help="also write <task>.jsonl (doc_id, prompt, target, doc) here")
@@ -693,8 +749,8 @@ def main():
     pr.add_argument("--iters", type=int, default=10000)
     pr.add_argument("--out", default=None)
     a = ap.parse_args()
-    {"run": cmd_run, "inputs": cmd_inputs, "worker": cmd_worker, "merge": cmd_merge, "compare": cmd_compare,
-     "paired": cmd_paired}[a.cmd](a)
+    {"run": cmd_run, "preflight": cmd_preflight, "inputs": cmd_inputs, "worker": cmd_worker, "merge": cmd_merge,
+     "compare": cmd_compare, "paired": cmd_paired}[a.cmd](a)
 
 
 if __name__ == "__main__":

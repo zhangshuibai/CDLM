@@ -15,7 +15,15 @@ paper's numbers bitwise. Training uses a different environment (see
 
 ## Install
 
-Linux x86_64, an NVIDIA driver for CUDA 12.1 or newer, and conda. No CUDA toolkit is needed.
+Linux x86_64 with glibc 2.28 or newer, an NVIDIA driver for CUDA 12.1 or newer, and conda. No CUDA
+toolkit is needed. glibc 2.28 is what the pinned pyarrow 21.0.0 wheel requires (`manylinux_2_28`;
+numpy 2.3.2 and pillow 11.3.0 need 2.27). On an older system pip falls back to building these
+packages from source.
+
+Run the commands in this order. `pip install -r evaluation/requirements.txt` on its own fails: PyPI's
+torch 2.5.0 is the CUDA 12.4 build and requires `nvidia-nvjitlink-cu12==12.4.127`, which conflicts
+with the file's pin (ResolutionImpossible), and flash-attn has no wheel on PyPI, so pip tries to build
+it from source.
 
 ```bash
 conda create -n cdlm-eval python=3.11.13 -y && conda activate cdlm-eval
@@ -120,11 +128,13 @@ task code (`utils.py`, `sanitize.py`) is imported.
 
 ## Hugging Face downloads
 
-The code downloads these at run time and passes no revision, so it gets the Hub's `main`. The
-verified runs used the revisions below. On 2026-09-28 the Hub's `main` of every dataset, of the
-metric and of `fredzzp/open-dcoder-0.5B` was still this revision. The two `Shuibai12138` model
-repositories have one later commit, which only adds a model card; the files the code loads are
-unchanged.
+The repository's scripts download these at run time without a revision, so they get the Hub's
+`main` (for the `code_eval` metric, see the note below the table). The launchers in
+`evaluation/crb/` and `evaluation/codegen/` load the datasets at the revisions below and check what
+they load. The verified runs used the dataset and metric revisions below. On 2026-09-28 the Hub's
+`main` of every dataset and of `fredzzp/open-dcoder-0.5B` was still this revision. For the models
+the table gives the pinned revision. The paper's runs loaded CDLM-0.5B and MDLM-0.5B at the earlier
+revisions in parentheses, which differ from the pinned ones only in the model card.
 
 | What | Loaded by | Hub repository | Revision |
 | --- | --- | --- | --- |
@@ -132,10 +142,12 @@ unchanged.
 | HumanEval+ | both paths | `evalplus/humanevalplus` | `d32357cf319e50e9c8d8dab5ea876c72b0fd321b` |
 | MBPP | both paths, config `full` (the CRB scripts use the default config, which is `full`) | `google-research-datasets/mbpp` | `4bb6404fdc6cacfda99d4ac4205087b89d32030c` |
 | MBPP+ | both paths | `evalplus/mbppplus` | `b2d74c91837c3f2a20c1299ae98133cbe7cfa077` |
-| `code_eval` metric | `evaluate.load("code_eval")` in `evaluate_code.py` and in lm-eval's `humaneval/utils.py`, `mbpp/utils.py` | Space `evaluate-metric/code_eval` | tag `v0.4.0` (commit `da8da20af42f1f30de48bdc7cf4e57d5976a1b8d`) |
-| CDLM-0.5B | `--model_name` (CRB), `pretrained=` (code generation) | `Shuibai12138/Open-Dcoder-0.5B-mixture-mdm-step2000` | `4581e1d4215a4055ccce6eaaf898f27276a8759c` |
-| MDLM-0.5B | same | `Shuibai12138/Open-Dcoder-0.5B-baseline-mdm-step2000` | `b78b055f3a1f0e683d3893783c10fbfd939b0cf7` |
+| `code_eval` metric | `evaluate.load("code_eval")` in `evaluate_code.py` and in lm-eval's `humaneval/utils.py`, `mbpp/utils.py` | Space `evaluate-metric/code_eval` | tag `v0.4.0` (ref `da8da20af42f1f30de48bdc7cf4e57d5976a1b8d`, which resolves to commit `92ce153df8e9f17a60828fcbb0fc914ebd0352ea`) |
+| CDLM-0.5B | `--model_name` (CRB), `pretrained=` (code generation) | `Shuibai12138/Open-Dcoder-0.5B-mixture-mdm-step2000` | `5a7170e7c2333e41d5312c690ac4818722a76c3a` (paper runs: `4581e1d4215a4055ccce6eaaf898f27276a8759c`) |
+| MDLM-0.5B | same | `Shuibai12138/Open-Dcoder-0.5B-baseline-mdm-step2000` | `fa5eef962d343a0d813d1f963a5d44c39deaed45` (paper runs: `b78b055f3a1f0e683d3893783c10fbfd939b0cf7`) |
 | Open-dCoder-0.5B (base) | same | `fredzzp/open-dcoder-0.5B` | `d0d86d5b99960c05258bb1f8265dd91564dbac67` |
+| CDLM-OCI (not a paper model) | same | `Shuibai12138/Open-Dcoder-0.5B-CDLM-OpenCodeInstruct` | `8eb87fe2ab6850ced7606c8a678c84f1b28fd170` |
+| MDLM-OCI (not a paper model) | same | `Shuibai12138/Open-Dcoder-0.5B-MDLM-OpenCodeInstruct` | `535b36930a32109c87986c341bf554cc42e76b2e` |
 
 Notes:
 
@@ -143,13 +155,21 @@ Notes:
   md5 `7dfb30101f10f0d4dc5ae2e0c33558f6`) and `execute.py` (blob
   `53517a805cf84758b858612b62794b874590159b`, md5 `4c2fcb60b139ea0a9f34f033f7ff2ecb`). evaluate
   caches them under `modules/evaluate_modules/metrics/evaluate-metric--code_eval/78d307ea938083398db7d9815f03ed661e9c15f60d77880ce007a8a02648f176/`.
-  Tag `v0.4.0` and `main` both have these files. evaluate 0.4.5 first asks for tag `v0.4.5`,
+  The Space's `main` has moved past the tag: on 2026-09-28 it was
+  `4242b7b28325ff9d4d5e60522020d8cebc89d672`, which differs from `v0.4.0` only in `README.md` and
+  `requirements.txt`, so both have these two files. evaluate 0.4.5 first asks for tag `v0.4.5`,
   which the Space does not have, and then falls back to `main`, which can change. Setting
-  `HF_SCRIPTS_VERSION=v0.4.0` makes it fetch the tag instead.
+  `HF_SCRIPTS_VERSION=v0.4.0` makes it fetch the tag instead. Both launchers (and
+  `evaluation/crb/crb_evaldata.py`, `evaluation/codegen/codegen_eval.py`) set it unless it is
+  already set, and stop if the loaded files do not have the md5 above. In a fresh `HF_HOME` without
+  a token, `HF_SCRIPTS_VERSION=v0.4.0` fetched both files from `resolve/v0.4.0/` with these md5
+  values (2026-09-28).
 - **Model weights** (sha256 of `model.safetensors`): CDLM-0.5B
   `e43f9fa6b4cccfc18a2bac8925d64f5a020fa6a6d34db2c801220e22fdf8a680`, MDLM-0.5B
   `4f1f412cdac13553b76fd8de569ae9ed5a95447dfabaaf16da508d09344ff36e`, base
-  `59c1a005f4b672bdd3bbdab6258b283dff3b87bab5cc4bbc0d479e8388f77b6e`.
+  `59c1a005f4b672bdd3bbdab6258b283dff3b87bab5cc4bbc0d479e8388f77b6e`, CDLM-OCI
+  `3ae362eb296006bcd139234967bcc5503296b7912261fda337b867d44713acd4`, MDLM-OCI
+  `31521c7d9f5c02fd2d6b4769ae8d99490c4261af0bc5b566d42d0076221067c4`.
   `Shuibai12138/CDLM-0.5B` has the CDLM weights, but its name lacks `open-dcoder`, so `utils.py`
   would not load it as a diffusion model. Use the `Open-Dcoder` name, or a local directory whose
   path contains `open-dcoder` and not `llada`.
@@ -235,12 +255,45 @@ not oversubscribe the CPU while scoring.
   environment happened to have (scikit-learn and its dependencies, `numexpr`, `zstandard`,
   `hf_transfer`, `chardet`, `protobuf`).
 - CPU-only checks in that fresh environment:
-  - the tokenizer ids of all 9257 pinned CRB samples hash to the value pinned by the CRB protocol;
+  - the tokenizer ids of all 9257 pinned CRB samples hash to the value pinned by the CRB protocol
+    (`run_crb.sh ... --phase preflight` repeats this check);
   - `evaluate_code.py` on four pinned CRB input files (921 programs) reproduces the recorded
-    pass/fail of every program;
+    pass/fail of every program (commands below);
   - the documents and prompts of the four lm-eval tasks hash to the values of the recorded paper
-    runs;
+    runs (`python evaluation/codegen/codegen_eval.py inputs` repeats this check);
   - re-scoring recorded paper samples through lm-eval (CDLM-0.5B vanilla on all four tasks,
     base ReMDM on HumanEval+, MDLM-0.5B vanilla on MBPP; 1870 problems) reproduces the recorded
     pass@1 and pass@10 of every problem.
 - GPU generation was not re-run in the fresh environment.
+
+### Scoring check on the CPU
+
+The four files are HumanEval operator n_replace 1 (252 programs), HumanEval+ var n_replace 2 (62),
+MBPP literal n_replace 1 (431) and MBPP+ operator n_replace 3 (176) of the pinned CRB input set.
+`evaluate_code.py` re-executes every corrupted program in them against the tests, and its
+`test_passed` must equal the one stored in the file. From the repository root, with a local copy of
+the inputs in `crb-paper-inputs/` (see [evaluation/README.md](README.md#inputs)):
+
+```bash
+python evaluation/crb/crb_evaldata.py prefetch    # the pinned dataset revisions and code_eval v0.4.0
+export PYTHONPATH="$PWD/Open-dLLM" CUDA_VISIBLE_DEVICES="" HF_HUB_OFFLINE=1 HF_DATASETS_OFFLINE=1 HF_EVALUATE_OFFLINE=1
+IN=crb-paper-inputs/open-dcoder-0.5B; TAG=Open-Dcoder-0.5B-mixture-mdm-step2000
+mkdir -p crb-cpu-check
+for spec in "human-eval operator 1" "human-eval+ var 2" "mbpp literal 1" "mbpp+ operator 3"; do
+  set -- $spec
+  python evaluate_code.py --results_file $IN/$1/evaluated/${TAG}_$2_2_wrong_$3_evaluated.jsonl \
+      --output_file crb-cpu-check/$1_$2_$3.jsonl --dataset $1 --no_postprocess > crb-cpu-check/$1_$2_$3.log 2>&1
+done
+python - <<'EOF'
+import json
+tag = "Open-Dcoder-0.5B-mixture-mdm-step2000"
+for ds, et, nr in [("human-eval", "operator", 1), ("human-eval+", "var", 2), ("mbpp", "literal", 1), ("mbpp+", "operator", 3)]:
+    rec = [json.loads(l)["test_passed"] for l in open(f"crb-paper-inputs/open-dcoder-0.5B/{ds}/evaluated/{tag}_{et}_2_wrong_{nr}_evaluated.jsonl")]
+    got = [json.loads(l)["test_passed"] for l in open(f"crb-cpu-check/{ds}_{et}_{nr}.jsonl")]
+    print(ds, et, nr, "programs", len(got), "passed", sum(map(bool, got)), "differ", sum(bool(a) != bool(b) for a, b in zip(got, rec)) + abs(len(got) - len(rec)))
+EOF
+```
+
+Expected output: 252 / 62 / 431 / 176 programs with 22 / 0 / 93 / 1 passing and `differ 0` in every
+line. It takes about 4 minutes. These files already hold the full programs in `completion`, so
+`--map_prompt2completion` (which `build_crb_inputs.sh` passes for raw generator output) is not used.

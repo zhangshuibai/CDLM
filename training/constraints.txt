@@ -1,0 +1,100 @@
+# Constraints for the 0.5B training environment: the complete `pip freeze` of an environment
+# built with the commands in training/README.md ("Environment"). `pip check` was clean, and on
+# 2 x A100-PCIE-40GB `ARM=cdlm SEED=1234 NPROC=2 STOP_STEP=2 bash training/scripts/train_0.5b.sh`
+# reproduced the recorded step-1 and step-2 losses of the seed-1234 CDLM run, and every loss
+# component, bitwise.
+#
+#   pip install -r training/requirements.txt -c training/constraints.txt
+#
+# after torch and flash-attn (see requirements.txt for the install order). requirements.txt says
+# what is installed; this file fixes the version of every package, including the transitive
+# dependencies that requirements.txt leaves open.
+#
+# Platform: Linux x86_64, glibc >= 2.28, CPython 3.11 (the verified environment ran 3.11.16;
+# the paper runs used 3.11.13).
+# Differences from the raw freeze: flash-attn was installed from the prebuilt wheel URL in
+# requirements.txt and is listed here by version; setuptools (omitted by `pip freeze`) is added.
+# torch==2.5.0+cu124 is satisfied by the torch installed from the cu124 index.
+accelerate==1.11.0
+aiohappyeyeballs==2.7.1
+aiohttp==3.14.3
+aiosignal==1.4.0
+annotated-types==0.8.0
+anyio==4.15.1
+attrs==26.1.0
+bytecheckpoint==0.0.2
+cachetools==7.2.0
+certifi==2026.7.22
+charset-normalizer==3.5.1
+click==8.5.0
+datasets==4.2.0
+dill==0.4.0
+einops==0.8.2
+filelock==3.32.3
+flash-attn==2.7.4.post1
+frozenlist==1.8.0
+fsspec==2024.6.1
+gitdb==4.0.12
+GitPython==3.1.62
+grpcio==1.69.0
+h11==0.16.0
+hf-xet==1.6.0
+httpcore==1.0.9
+httpx==0.28.1
+huggingface-hub==0.34.4
+idna==3.20
+Jinja2==3.1.6
+liger_kernel==0.5.8
+MarkupSafe==3.0.3
+mmh3==4.1.0
+mpmath==1.3.0
+multidict==6.9.1
+multiprocess==0.70.16
+networkx==3.6.1
+numpy==2.3.2
+nvidia-cublas-cu12==12.4.5.8
+nvidia-cuda-cupti-cu12==12.4.127
+nvidia-cuda-nvrtc-cu12==12.4.127
+nvidia-cuda-runtime-cu12==12.4.127
+nvidia-cudnn-cu12==9.1.0.70
+nvidia-cufft-cu12==11.2.1.3
+nvidia-curand-cu12==10.3.5.147
+nvidia-cusolver-cu12==11.6.1.9
+nvidia-cusparse-cu12==12.3.1.170
+nvidia-nccl-cu12==2.21.5
+nvidia-nvjitlink-cu12==12.4.127
+nvidia-nvtx-cu12==12.4.127
+packaging==25.0
+pandas==3.0.6
+pathlib_abc==0.5.2
+pillow==11.3.0
+platformdirs==4.12.1
+propcache==0.5.4
+protobuf==3.20.3
+psutil==7.0.0
+pyarrow==22.0.0
+pydantic==2.13.5
+pydantic_core==2.46.5
+python-dateutil==2.9.0.post0
+PyYAML==6.0.2
+regex==2026.9.10
+requests==2.34.2
+safetensors==0.6.2
+sentry-sdk==2.71.0
+setuptools==78.1.1
+six==1.17.0
+smmap==5.0.3
+sympy==1.13.1
+tokenizers==0.22.2
+torch==2.5.0+cu124
+torchdata==0.11.0
+tqdm==4.67.1
+transformers==4.57.0
+triton==3.1.0
+typing-inspection==0.4.4
+typing_extensions==4.16.0
+universal_pathlib==0.3.10
+urllib3==2.8.0
+wandb==0.23.0
+xxhash==4.0.1
+yarl==1.25.1

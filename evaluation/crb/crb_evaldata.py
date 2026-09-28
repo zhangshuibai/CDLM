@@ -5,7 +5,9 @@ evaluate_code.py calls load_dataset(<name>) without a revision and
 evaluate.load("code_eval").  run_crb.sh first caches the pinned revisions below
 (`prefetch`), then runs every evaluation offline, and checks with `fingerprint`
 that load_dataset(<name>) resolves to data whose test fields are identical to the
-ones the paper's numbers were computed with.
+ones the paper's numbers were computed with.  The code_eval metric is fetched at
+HF_SCRIPTS_VERSION (default v0.4.0, the verified module) and `fingerprint` reports whether it
+matches the verified files (run_crb.sh stops if it does not).
 
   crb_evaldata.py prefetch    [--datasets ...]
   crb_evaldata.py fingerprint [--datasets ...]   (prints JSON; exit 1 on mismatch)
@@ -18,6 +20,8 @@ import os
 import sys
 
 os.environ.setdefault("HF_ALLOW_CODE_EVAL", "1")
+# evaluate 0.4.5 would ask for tag v0.4.5 of the code_eval Space (absent) and fall back to its main
+os.environ.setdefault("HF_SCRIPTS_VERSION", "v0.4.0")
 
 # name as used by evaluate_code.py, Hub revision, sha256 of the fields evaluate_code.py reads
 PINNED = {
@@ -86,6 +90,7 @@ def main():
             out["mismatch"].append(d)
     out["code_eval_sha256"] = code_eval_sha()
     out["code_eval_matches"] = out["code_eval_sha256"] == CODE_EVAL_SHA
+    out["hf_scripts_version"] = os.environ["HF_SCRIPTS_VERSION"]
     print(json.dumps(out))
     sys.exit(1 if out["mismatch"] else 0)
 

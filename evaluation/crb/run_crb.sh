@@ -3,6 +3,7 @@
 # CRB evaluation (error localisation + correction) of one Open-dCoder-family model.
 #
 #   bash evaluation/crb/run_crb.sh <MODEL> <LABEL> [options]
+#   bash evaluation/crb/run_crb.sh --help
 #
 #   MODEL  Hub id whose name contains "open-dcoder" (e.g.
 #          Shuibai12138/Open-Dcoder-0.5B-mixture-mdm-step2000) or a local HF-format
@@ -13,8 +14,9 @@
 #   LABEL  output prefix, [A-Za-z0-9_.-]+, must not contain llada or dream.
 #
 # Options:
-#   --gpus 0               comma-separated GPU ids; refinement jobs are spread over them
-#   --jobs 3               concurrent refinement processes (single-GPU each)
+#   --gpus 0               comma-separated GPU ids
+#   --jobs 3               concurrent refinement processes, one GPU each; job slot i runs on
+#                          GPU i mod (number of --gpus), so several jobs can share a GPU
 #   --port_base 29500      rendezvous ports port_base .. port_base+jobs-1
 #   --eval_jobs 8          concurrent CPU evaluation processes
 #   --nr "1 2 3 4 5"       corruption levels (n_replace)
@@ -23,7 +25,9 @@
 #   --error_types "operator var literal"
 #   --out_dir DIR          default evaluation/crb/outputs
 #   --model_revision REV   Hub revision of MODEL (the snapshot is then used as a local dir)
-#   --phase all|refine|eval|metrics
+#   --phase all|refine|eval|metrics|preflight
+#                          preflight: only the checks below (code, packages, inputs, model,
+#                          tokenizer, evaluation data, code_eval); CPU only, exit 0 if all pass
 #   --purge                delete histories and refined jsonl once the summary is complete
 #   --allow_data_drift     run even if the evaluation datasets differ from the pinned ones
 #
@@ -32,12 +36,20 @@
 #   CRB_INPUTS_DIR       local copy of the input set; otherwise the paper's set is
 #                        downloaded from the Hub dataset CRB_INPUTS_REPO
 #                        (default Shuibai12138/crb-paper-inputs, directory
-#                        open-dcoder-0.5B/) at CRB_INPUTS_REVISION (default: the pinned upload 21cae17423b0).
+#                        open-dcoder-0.5B/) at CRB_INPUTS_REVISION (default: the pinned upload
+#                        21cae17423b073b152e997746876d6b828b18358).
 #                        Accepted layouts: DIR/open-dcoder-0.5B/<dataset>/evaluated/,
 #                        DIR/buggy_datasets/<dataset>/evaluated/ or DIR/<dataset>/evaluated/.
 #                        A set written by build_crb_inputs.sh (DIR/crb_inputs_meta.json)
 #                        is checked against its own INPUTS.md5 and tokenizer hash.
 #   CRB_OFFLINE=1        never contact the Hub (model, inputs and datasets must be cached)
+#   HF_SCRIPTS_VERSION   code_eval metric version fetched by evaluate (default v0.4.0)
+#
+# Preflight: fails on a missing liger-kernel (without it veomni's Qwen2 runs plain PyTorch
+# layers and the numerics change), a code_eval module other than the verified one, or
+# inputs, model or tokenizer that do not match; warns if torch, transformers, tokenizers,
+# liger-kernel, triton, accelerate, datasets, evaluate or huggingface-hub differ from the
+# verified versions (evaluation/ENVIRONMENT.md).
 #
 # Protocol: refine_setting remove_all, algorithm self_conf-remask:vanilla, remask iff
 # confidence <= 0.9, temperature 0.0, batch_size 1, refined_steps 2..5 (T = 1..4; the
@@ -82,7 +94,9 @@ PIPE_SHA=(
 VEOMNI_TREE_SHA=ae77fb8ca0c0aa33a1cd6cf0abf19d6a14e4358911d6fd5a9ccc430580cd6214
 
 # ------------------------------- arguments ------------------------------------
-[ $# -ge 2 ] || { awk 'NR>1 && /^#/ {print; next} NR>1 {exit}' "$0"; exit 2; }
+usage() { awk 'NR>1 && /^#/ {print; next} NR>1 {exit}' "$0"; }
+case "${1:-}" in -h|--help) usage; exit 0;; esac
+[ $# -ge 2 ] || { usage; exit 2; }
 MODEL=$1; LABEL=$2; shift 2
 GPUS=0; JOBS=3; PORT_BASE=29500; EVAL_JOBS=8
 NR_LIST="1 2 3 4 5"; STEPS_LIST="2 3 4 5"
@@ -109,7 +123,7 @@ done
 fail() { echo "PREFLIGHT FAIL: $*"; exit 1; }
 [[ "$LABEL" =~ ^[A-Za-z0-9_.-]+$ ]] || fail "bad LABEL '$LABEL'"
 case "${LABEL,,}" in *llada*|*dream*) fail "LABEL must not contain llada/dream";; esac
-case "$PHASE" in all|refine|eval|metrics) ;; *) fail "bad --phase $PHASE";; esac
+case "$PHASE" in all|refine|eval|metrics|preflight) ;; *) fail "bad --phase $PHASE";; esac
 [[ "$JOBS" =~ ^[1-9][0-9]*$ && "$EVAL_JOBS" =~ ^[1-9][0-9]*$ && "$PORT_BASE" =~ ^[0-9]+$ ]] || fail "--jobs/--eval_jobs/--port_base must be positive integers"
 IFS=, read -r -a GPU_ARR <<< "$GPUS"
 DATASETS=($DATASETS_LIST); ERROR_TYPES=($ERROR_TYPES_LIST); NR_ARR=($NR_LIST); STEPS_ARR=($STEPS_LIST)
@@ -131,6 +145,9 @@ fi
 PY=${CRB_PYTHON:-python}
 command -v "$PY" >/dev/null || fail "python interpreter '$PY' not found (set CRB_PYTHON)"
 export PYTHONHASHSEED=0 TOKENIZERS_PARALLELISM=false HF_ALLOW_CODE_EVAL=1
+# evaluate 0.4.5 would ask for tag v0.4.5 of the code_eval Space, which does not exist, and fall
+# back to its moving main; v0.4.0 is the verified module (the md5 check below is still fatal)
+export HF_SCRIPTS_VERSION=${HF_SCRIPTS_VERSION:-v0.4.0}
 export PYTHONPATH=$REPO/Open-dLLM
 go_offline() { export HF_HUB_OFFLINE=1 HF_DATASETS_OFFLINE=1 TRANSFORMERS_OFFLINE=1 HF_EVALUATE_OFFLINE=1; }
 [ "${CRB_OFFLINE:-0}" = 1 ] && go_offline
@@ -156,6 +173,31 @@ VEOMNI_SHA=$(cd "$REPO/Open-dLLM" && find veomni -name '*.py' | sort | xargs sha
 [ "$VEOMNI_SHA" = "$VEOMNI_TREE_SHA" ] || echo "WARNING: Open-dLLM/veomni differs from the verified tree"
 "$PY" -c "import torch, transformers, datasets, evaluate, huggingface_hub, numpy" \
   || fail "missing python packages (torch transformers datasets evaluate huggingface_hub numpy)"
+# versions of the packages that set the numerics; liger-kernel is detected the way veomni does it
+PKG_CHECK=$("$PY" - <<'PY'
+import importlib.metadata as md, importlib.util, json
+want = {"torch": "2.5.0+cu121", "transformers": "4.54.1", "tokenizers": "0.21.4", "liger-kernel": "0.5.8",
+        "triton": "3.1.0", "accelerate": "1.10.1", "datasets": "3.6.0", "evaluate": "0.4.5",
+        "huggingface-hub": "0.34.4"}
+got = {}
+for p, w in want.items():
+    try:
+        got[p] = md.version(p)
+    except md.PackageNotFoundError:
+        got[p] = None
+    if got[p] != w:
+        print("DIFF", p, got[p], w)
+if importlib.util.find_spec("liger_kernel") is None:
+    print("MISSING liger-kernel")
+print(json.dumps(got))
+PY
+) || fail "could not read package versions"
+PKG_VERSIONS=$(echo "$PKG_CHECK" | tail -1)
+grep -q '^MISSING liger-kernel' <<< "$PKG_CHECK" \
+  && fail "liger-kernel is not importable: veomni's Qwen2 would silently run plain PyTorch layers and change the numerics (pip install liger-kernel==0.5.8; see evaluation/ENVIRONMENT.md)"
+while read -r _ p g w; do
+  echo "WARNING: $p $g differs from the verified $w (evaluation/ENVIRONMENT.md); results may not reproduce bitwise"
+done < <(grep '^DIFF' <<< "$PKG_CHECK")
 VEOMNI_FILE=$(cd "$WORK" && "$PY" -c "import veomni;print(veomni.__file__)" 2>/dev/null | tail -1)
 [ "$VEOMNI_FILE" = "$REPO/Open-dLLM/veomni/__init__.py" ] || fail "veomni imported from '$VEOMNI_FILE', expected $REPO/Open-dLLM/veomni"
 
@@ -268,7 +310,12 @@ if ! echo "$EVALDATA" | grep -q '"mismatch": \[\]'; then
   [ $ALLOW_DRIFT = 1 ] && echo "WARNING: evaluation datasets differ from the pinned revisions: $EVALDATA" \
     || fail "evaluation datasets differ from the pinned revisions (see crb_evaldata.py; --allow_data_drift to continue): $EVALDATA"
 fi
-echo "$EVALDATA" | grep -q '"code_eval_matches": true' || echo "WARNING: the code_eval metric module differs from the verified one"
+echo "$EVALDATA" | grep -q '"code_eval_matches": true' \
+  || fail "the code_eval metric module differs from the verified one (HF_SCRIPTS_VERSION=$HF_SCRIPTS_VERSION; see $LOGDIR/evaldata.log): $EVALDATA"
+if [ "$PHASE" = preflight ]; then
+  echo "[preflight] OK  model_name=$MODEL_NAME  weights_sha256=$WEIGHTS_SHA  (--phase preflight: no GPU work, run metadata not written)"
+  exit 0
+fi
 
 CRBMETA_model_arg=$MODEL CRBMETA_model_revision=$MODEL_REV CRBMETA_model_source=$MODEL_SRC CRBMETA_model_name_used=$MODEL_NAME \
 CRBMETA_weights_sha256=$WEIGHTS_SHA CRBMETA_label=$LABEL CRBMETA_gpus=$GPUS CRBMETA_jobs=$JOBS CRBMETA_eval_jobs=$EVAL_JOBS \
@@ -277,6 +324,7 @@ CRBMETA_algorithm=$ALGORITHM CRBMETA_tau=$CT CRBMETA_temperature=$TEMPERATURE CR
 CRBMETA_refine_setting=$REFINE_SETTING CRBMETA_inputs_source=$INPUTS_SOURCE CRBMETA_inputs_tag=$TAG CRBMETA_inputs_data_num=$DATA_NUM \
 CRBMETA_paper_input_set=$PAPER_SET CRBMETA_inputs_manifest_md5=$MANIFEST_MD5 CRBMETA_token_sha256=$WANT_TOKEN_SHA \
 CRBMETA_pipeline_matches_verified_release=$PIPE_OK CRBMETA_veomni_tree_sha256=$VEOMNI_SHA CRBMETA_evaldata=$EVALDATA \
+CRBMETA_package_versions=$PKG_VERSIONS CRBMETA_hf_scripts_version=$HF_SCRIPTS_VERSION \
 "$PY" - "$META" "$REPO" "${GPU_ARR[0]}" <<'PY' || fail "could not write run metadata"
 import json, os, platform, subprocess, sys
 import torch, transformers
@@ -298,6 +346,7 @@ for k in ["tau", "temperature"]:
 for k in ["paper_input_set", "pipeline_matches_verified_release"]:
     m[k] = m[k] == "1"
 m["evaldata"] = json.loads(m["evaldata"])
+m["package_versions"] = json.loads(m["package_versions"])
 m["repo_commit"] = sh("git", "-C", repo, "rev-parse", "HEAD")
 m["repo_pipeline_modified"] = bool(sh("git", "-C", repo, "status", "--porcelain", "--", "refine_code.py",
                                       "llada_sample.py", "utils.py", "evaluate_code.py", "sanitize.py",

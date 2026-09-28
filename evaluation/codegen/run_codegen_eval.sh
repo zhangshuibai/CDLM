@@ -6,6 +6,7 @@
 # models are identical to the recorded runs (see README.md).
 #
 # usage: bash evaluation/codegen/run_codegen_eval.sh MODEL OUT_DIR [GPUS] [PROCS_PER_GPU] [ALGS] [TASKS]
+#        bash evaluation/codegen/run_codegen_eval.sh --help
 #   MODEL          local HF checkpoint dir, Hub id, or Hub id@revision (downloaded at that revision)
 #   GPUS           comma list of GPU ids (default 0); the 4 virtual ranks x decoders x tasks run as
 #                  independent single-GPU workers, GPUS x PROCS_PER_GPU at a time (results do not depend on it)
@@ -14,10 +15,15 @@
 #   TASKS          subset of humaneval,humaneval_plus,mbpp,mbpp_plus (default: all four)
 # The same settings can be given as environment variables (GPUS=... PROCS_PER_GPU=... ALGS=... TASKS=...).
 # MAX_DOCS=N runs only the first N docs of every virtual rank (spot check); PYTHON selects the interpreter.
+# PREFLIGHT_ONLY=1 runs only the checks done before any GPU work (code, packages, model, inputs,
+# code_eval metric) on the CPU and exits 0 if all pass.
+# HF_SCRIPTS_VERSION selects the code_eval metric version (default v0.4.0, the verified module;
+# any other module fails its md5 check).
 # output: OUT_DIR/summary.json, metrics_<task>__<alg>.json, samples_<task>__<alg>.jsonl, shards/*.log
 set -euo pipefail
-MODEL="${1:?usage: run_codegen_eval.sh MODEL OUT_DIR [GPUS] [PROCS_PER_GPU] [ALGS] [TASKS]}"
-OUT="${2:?usage: run_codegen_eval.sh MODEL OUT_DIR [GPUS] [PROCS_PER_GPU] [ALGS] [TASKS]}"
+case "${1:-}" in -h|--help) awk 'NR>1 && /^#/ {print; next} NR>1 {exit}' "$0"; exit 0;; esac
+MODEL="${1:?usage: run_codegen_eval.sh MODEL OUT_DIR [GPUS] [PROCS_PER_GPU] [ALGS] [TASKS] (--help for details)}"
+OUT="${2:?usage: run_codegen_eval.sh MODEL OUT_DIR [GPUS] [PROCS_PER_GPU] [ALGS] [TASKS] (--help for details)}"
 GPUS="${3:-${GPUS:-0}}"
 PPG="${4:-${PROCS_PER_GPU:-4}}"
 ALGS="${5:-${ALGS:-vanilla,remdm}}"
@@ -31,6 +37,12 @@ if [ -n "${MAX_DOCS:-}" ]; then EXTRA+=(--max_docs "$MAX_DOCS"); fi
 # the repository's Open-dLLM eval code, vendored lm-evaluation-harness and veomni; nothing else
 export PYTHONPATH="$REPO/Open-dLLM/eval/eval_completion:$REPO/Open-dLLM/lm-evaluation-harness:$REPO/Open-dLLM"
 export HF_ALLOW_CODE_EVAL=1 TOKENIZERS_PARALLELISM=false
+# evaluate 0.4.5 would ask for tag v0.4.5 of the code_eval Space (absent) and fall back to its moving main
+export HF_SCRIPTS_VERSION="${HF_SCRIPTS_VERSION:-v0.4.0}"
 mkdir -p "$OUT"
+if [ "${PREFLIGHT_ONLY:-0}" = 1 ]; then
+  "$PY" "$HERE/codegen_eval.py" preflight --model "$MODEL" --algs "$ALGS" --tasks "$TASKS" 2>&1 | tee -a "$OUT/run.log"
+  exit 0
+fi
 "$PY" "$HERE/codegen_eval.py" run --model "$MODEL" --out_dir "$OUT" --gpus "$GPUS" \
     --procs_per_gpu "$PPG" --algs "$ALGS" --tasks "$TASKS" ${EXTRA[@]+"${EXTRA[@]}"} 2>&1 | tee -a "$OUT/run.log"

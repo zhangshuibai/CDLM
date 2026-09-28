@@ -1,5 +1,7 @@
 # Training dependencies for the Open-dCoder-0.5B CDLM / MDLM runs
-# (Python 3.11.13, Linux x86_64, torch built for CUDA 12.4, A100 GPUs).
+# (Python 3.11.13, Linux x86_64 with glibc >= 2.28, torch built for CUDA 12.4, A100 GPUs).
+# constraints.txt pins every other package, transitive dependencies included, to a verified
+# environment; install with -c constraints.txt (below).
 #
 # Versions. The pins below are the environment of the multi-seed runs (seeds 1234 and 2025)
 # and the clean-token-weight run, which used exactly the veomni/ and tasks/ code in this
@@ -14,7 +16,8 @@
 # Install order:
 #   pip install torch==2.5.0 --index-url https://download.pytorch.org/whl/cu124
 #   pip install https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.5cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
-#   pip install -r requirements.txt
+#   pip install -r requirements.txt -c constraints.txt
+#   pip check
 #
 # flash-attn: the URL above is the official prebuilt wheel for torch 2.5, CUDA 12,
 # Python 3.11 and the pre-C++11 ABI that the torch 2.5.0 wheels use; it needs no
@@ -32,6 +35,10 @@ setuptools==78.1.1
 flash-attn==2.7.4.post1
 # Required: the MDM / mixture losses in modeling_qwen2.py use
 # LigerFusedLinearCrossEntropyLoss and raise if liger-kernel is missing.
+# In 0.5.8 its backward with reduction="none" multiplies every position's gradient by the
+# upstream gradient of the first position (row 0) only, so the per-token loss weights do not
+# reach the gradient (README.md, "Effective gradient"). The released 0.5B checkpoints were trained this way; another
+# liger-kernel version can change the gradients.
 liger-kernel==0.5.8
 
 # 4.57.0 was later yanked on PyPI ("Error in the setup causing installation issues");

@@ -24,10 +24,11 @@ submission.
 | `configs/pretrain/qwen2_5_coder_500M.yaml` | The only config used by the 0.5B runs. The launch scripts override parts of it on the command line. |
 | `configs/cdlm/` | The fully resolved configurations of the runs behind CDLM-0.5B and MDLM-0.5B, for reference (see [Provenance](#provenance-of-cdlm-05b-and-mdlm-05b)). |
 | `scripts/` | Launchers for the 0.5B experiments. |
-| `tools/` | Conversion of checkpoints into HuggingFace directories for the CRB pipeline. |
+| `tools/` | Conversion of checkpoints into HuggingFace directories for the CRB pipeline; `read_wandb_history.py` prints a run's full-precision losses from its offline W&B files. |
 | `data_prep/` | Download and verification of the training corpus. |
 | `llada8b_lora/` | LLaDA-8B-Base LoRA trainer and its CRB evaluation scripts. |
 | `requirements.txt` | Pinned environment for the 0.5B runs. |
+| `constraints.txt` | Full `pip freeze` of a verified 0.5B training environment, used with `pip install -c`. |
 | `LICENSE`, `NOTICE` | Apache-2.0 license and attribution for the code derived from VeOmni / Open-dLLM. |
 | `PATCH_vs_Open-dLLM-5b9ba4d.diff` | The complete difference between this snapshot and the public Open-dLLM at commit 5b9ba4d (9 files). Applying it to that commit reproduces `veomni/` and `tasks/train_torch.py` exactly. The other upstream entry points (`tasks/infer.py`, `tasks/omni/`) are not shipped. |
 
@@ -93,7 +94,10 @@ L =  (1/|S|) Σ_{i∈S} ℓ_i                              # "mdm"
    + clean_token_wt · (1/|C|) Σ_{i∈C} ℓ_i             # "clean"
 ```
 
-The names in comments are the loss components printed in the training log. Details:
+The names in comments are the loss components printed in the training log. This is the loss value
+the trainer computes and logs, and every weight below is a weight in that value. The gradient that
+reaches the optimizer is not the gradient of L: see [Effective gradient](#effective-gradient).
+Details:
 
 - **Normalisation.** Every term is a token mean over its set, pooled over all chunks in the
   micro-batch. It is not a per-sequence mean. Each denominator gets +1e-8.
@@ -103,9 +107,12 @@ The names in comments are the loss components printed in the training log. Detai
   empty.
 - **Averaging.** Each micro-batch loss is divided by the number of gradient-accumulation steps. DDP
   then averages over data-parallel ranks.
-- **Replaced positions enter three terms.** They are part of S, so a replaced token's cross-entropy
-  gets weight 1/|S| in "mdm", the detached weight exp(−ℓ_i)/(t_i·|S|) in "path", and
-  `noise_token_wt`/|N| (0.1/|N| for CDLM) in "noise".
+- **Replaced positions enter three terms.** They are part of S, so in L a replaced token's
+  cross-entropy has weight 1/|S| in "mdm", the detached weight exp(−ℓ_i)/(t_i·|S|) in "path", and
+  `noise_token_wt`/|N| (0.1/|N| for CDLM) in "noise". Clean visible positions enter L only through
+  "clean", whose weight is 0 in every run except CDLM + ctw. In the gradient, these per-token
+  weights are not applied, and clean visible positions do receive gradient through the "noise"
+  term ([Effective gradient](#effective-gradient)).
 - **MDLM.** For MDLM, S is the set of masked positions and the loss is "mdm" + "path". Both arms share
   these two terms.
 - **Other logged components** (mixture runs only, computed without gradient): `noise_conf` and
@@ -125,7 +132,90 @@ V the visible positions and z_i = 1 for a replaced token. The implementation dif
 3. The noise term is a mean over the replaced positions, not an unnormalised sum.
 
 In addition, t is clamped to [1/500, 1 − 1/500], and every mean is pooled over the packed
-micro-batch. The implementation, not Eq. (1), is authoritative for all reported numbers.
+micro-batch. The implementation, not Eq. (1), is authoritative for all reported numbers. For the
+0.5B runs, the parameter updates also differ from the gradient of the implemented L (next section).
+
+### Effective gradient
+
+The loss values above are computed correctly, but the gradient of the 0.5B trainer is not the
+gradient of L.
+
+**What the code computes.** `Qwen2ForCausalLM.forward` computes the per-position cross-entropies
+with liger-kernel's `LigerFusedLinearCrossEntropyLoss(reduction="none")` (liger-kernel 0.5.8, the
+version in `requirements.txt`), in two calls:
+
+| Call | Positions labelled | Terms | Intended weight w_i of ℓ_i in L |
+| --- | --- | --- | --- |
+| 1 | S | "mdm", "path" | (1 + sg(exp(−ℓ_i))/t_i) / \|S\| |
+| 2 | all valid positions (every position except the first token of each packed chunk): masked, replaced and clean | "noise", "clean" | `noise_token_wt`/\|N\| on N, `clean_token_wt`/\|C\| on C, 0 on masked positions |
+
+Call 2 is part of the graph only when the noise or the clean term is included, and every weight is
+also divided by the number of gradient-accumulation steps. In liger-kernel 0.5.8, this function
+computes each position's gradient during the forward pass. Its backward then multiplies all of them
+by one scalar, the upstream gradient of row 0 (`grad_output` is read as a scalar), and ignores the
+upstream gradients of all other rows. Row 0 is the first position of the shifted micro-batch, whose
+target is the micro-batch's second token. Each call therefore contributes
+
+```
+w_0 · Σ_{i∈T} ∇ℓ_i        instead of        Σ_{i∈T} w_i · ∇ℓ_i
+```
+
+where T is the call's set of labelled positions and w_0 is the intended weight of row 0 in that
+call (0 when row 0 is not labelled there or has weight 0).
+
+**Minimal test.** On random data with 64 positions, the liger forward losses equal torch's within
+1e-6. With per-token weights w and w_0 > 0, the liger gradient equals w_0 · ∇(Σ_i ℓ_i) to a
+relative error of 4e-8, while the correct gradient Σ_i w_i ∇ℓ_i, computed with torch, differs from
+it by 87%. With w_0 = 0, the liger gradient is exactly zero.
+
+**Consequences for the 0.5B runs.**
+
+- **The per-token weights are not applied.** Within a call, every labelled position gets the same
+  weight. The factors 1/|S|, 1/t_i (path), `noise_token_wt`/|N| and `clean_token_wt`/|C| reach
+  the gradient only through w_0, as one scale factor per micro-batch and call.
+- **Some micro-batches have zero gradient.** When row 0 is a clean visible token and
+  `clean_token_wt` = 0, w_0 = 0 in both calls, and the micro-batch contributes exactly zero
+  gradient. Row 0 is clean with probability (1 − t)(1 − α), with t the mask ratio of its chunk,
+  i.e. 0.5 · (1 − α) on average: 0.45 for CDLM, 0.5 for MDLM.
+  An optimizer step combines 4 micro-batches (4 GPUs × accumulation 1, or 2 GPUs × accumulation
+  2), so about 0.45⁴ ≈ 4% (CDLM) and 0.5⁴ ≈ 6% (MDLM) of optimizer steps have exactly zero
+  gradient. They appear in the logs as `grad_norm` 0 with a nonzero loss. In the two
+  OpenCodeInstruct reference runs, this happened at 82 of 2,010 logged steps (CDLM) and 133 of
+  2,003 (MDLM). `optimizer.step()` still runs on those steps, so AdamW's moment estimates and
+  weight decay still change the weights.
+- **Other positions receive gradient through the noise term.** When row 0 is a replaced token,
+  call 2 adds `noise_token_wt`/|N| times the gradient sum over all valid positions, including the
+  clean visible and the masked ones. So clean visible tokens receive gradient in the CDLM runs,
+  although `clean_token_wt` = 0. In the CDLM + ctw run, a clean row 0 likewise adds
+  `clean_token_wt`/|C| times the same sum, so that run has no zero-gradient micro-batches of the
+  kind above.
+- **MDLM.** Only call 1 is in the graph. The gradient is (1 + exp(−ℓ_0)/t_0)/|S| · Σ_{i∈S} ∇ℓ_i
+  when row 0 is masked, and zero otherwise.
+
+**What is affected.** Every 0.5B run of this directory is affected: CDLM-0.5B and MDLM-0.5B, the α
+sweep, CDLM + ctw, the seed study and the two OpenCodeInstruct reference checkpoints. The released
+0.5B checkpoints, and the models behind the paper's 0.5B results, were trained with this effective
+gradient. The same pattern (`reduction="none"` followed by a weighted sum) is in the upstream
+Open-dLLM MDLM loss (`Open-dLLM/veomni/models/transformers/qwen2/modeling_qwen2.py`) and in this
+snapshot's `qwen3/modeling_qwen3.py`, which no run uses.
+
+**What is not affected.**
+- The LLaDA-8B LoRA trainer (`llada8b_lora/train_llada_mixture.py`) and the Sudoku trainer
+  (`sudoku/train.py`) use torch's `F.cross_entropy`, whose backward applies each position's upstream
+  gradient.
+- Evaluation (CRB and code generation) runs forward passes only.
+- The logged loss and its components are the forward values, so they are the L above.
+- Bitwise reproduction of the released runs (the step-1 and step-2 checks and the step-2001 replay
+  under [Provenance](#provenance-of-cdlm-05b-and-mdlm-05b)) is unaffected. The trainer is left
+  unchanged so that it keeps reproducing the released checkpoints.
+
+**For new work.** To train with the per-token weighting as written, you have two options:
+- compute the `reduction="none"` losses with torch's cross-entropy, i.e. logits from `lm_head`, then
+  `torch.nn.functional.cross_entropy(..., reduction="none")`, chunked if memory requires;
+- use a liger-kernel version whose backward applies a per-position upstream gradient (not tested
+  here).
+
+Either change alters the gradients, so it breaks bitwise reproduction of the released checkpoints.
 
 ### 8B and Sudoku
 
@@ -136,6 +226,8 @@ The 8B and Sudoku experiments use their own implementations of the same idea:
   `noise_token_wt` × the mean cross-entropy on replaced positions.
 - **Sudoku** (`sudoku/train.py`) uses the mean cross-entropy on masked cells plus 1.0 × the mean
   cross-entropy on replaced cells.
+
+Both use torch's cross-entropy, so their gradients are the gradients of these losses.
 
 ## Released checkpoints
 
@@ -150,7 +242,20 @@ public repositories under the same account.
 | MDLM-0.5B | [`Shuibai12138/Open-Dcoder-0.5B-baseline-mdm-step2000`](https://huggingface.co/Shuibai12138/Open-Dcoder-0.5B-baseline-mdm-step2000) | step 2000 of the headline MDLM run (below); `scripts/train_0.5b.sh`, `ARM=mdlm` |
 | α sweep | `Shuibai12138/open-dcoder-ablation-<α>`, twelve checkpoints, α ∈ {0.04, 0.06, 0.08, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9}, e.g. [`open-dcoder-ablation-0.3`](https://huggingface.co/Shuibai12138/open-dcoder-ablation-0.3) | `scripts/train_alpha_sweep.sh <α>` |
 | CDLM + ctw | [`Shuibai12138/open-dcoder-ablation-0.1-ctw0.1`](https://huggingface.co/Shuibai12138/open-dcoder-ablation-0.1-ctw0.1) | `scripts/train_clean_token_ablation.sh` |
+| CDLM-OCI (not a paper model) | [`Shuibai12138/Open-Dcoder-0.5B-CDLM-OpenCodeInstruct`](https://huggingface.co/Shuibai12138/Open-Dcoder-0.5B-CDLM-OpenCodeInstruct) | `ARM=cdlm bash training/scripts/train_0.5b_opencodeinstruct.sh` at commit 5e52812 ([below](#opencodeinstruct-reference-checkpoints)) |
+| MDLM-OCI (not a paper model) | [`Shuibai12138/Open-Dcoder-0.5B-MDLM-OpenCodeInstruct`](https://huggingface.co/Shuibai12138/Open-Dcoder-0.5B-MDLM-OpenCodeInstruct) | `ARM=mdlm bash training/scripts/train_0.5b_opencodeinstruct.sh` at commit 5e52812 |
 | CRB instances | [`Shuibai12138/crb-datasets`](https://huggingface.co/datasets/Shuibai12138/crb-datasets) | `codecorrection/generate.py` |
+
+Pinned revisions and weights (`model.safetensors`, 1,260,367,448 bytes each) as of this release:
+
+| Model | Hugging Face | Revision | sha256 |
+| --- | --- | --- | --- |
+| Base | `fredzzp/open-dcoder-0.5B` | `d0d86d5b99960c05258bb1f8265dd91564dbac67` | `59c1a005f4b672bdd3bbdab6258b283dff3b87bab5cc4bbc0d479e8388f77b6e` |
+| CDLM-0.5B | `Shuibai12138/Open-Dcoder-0.5B-mixture-mdm-step2000` | `5a7170e7c2333e41d5312c690ac4818722a76c3a` | `e43f9fa6b4cccfc18a2bac8925d64f5a020fa6a6d34db2c801220e22fdf8a680` |
+| CDLM-0.5B | `Shuibai12138/CDLM-0.5B` | `b142acd9ed0546d699cf95e2c84e3e1fdfc11b10` | same as above |
+| MDLM-0.5B | `Shuibai12138/Open-Dcoder-0.5B-baseline-mdm-step2000` | `fa5eef962d343a0d813d1f963a5d44c39deaed45` | `4f1f412cdac13553b76fd8de569ae9ed5a95447dfabaaf16da508d09344ff36e` |
+| CDLM-OCI | `Shuibai12138/Open-Dcoder-0.5B-CDLM-OpenCodeInstruct` | `8eb87fe2ab6850ced7606c8a678c84f1b28fd170` | `3ae362eb296006bcd139234967bcc5503296b7912261fda337b867d44713acd4` |
+| MDLM-OCI | `Shuibai12138/Open-Dcoder-0.5B-MDLM-OpenCodeInstruct` | `535b36930a32109c87986c341bf554cc42e76b2e` | `31521c7d9f5c02fd2d6b4769ae8d99490c4261af0bc5b566d42d0076221067c4` |
 
 The top-level CRB pipeline picks the Open-dCoder code path only when the model name contains
 `open-dcoder` (case-insensitive). To evaluate CDLM-0.5B with the pipeline, pass
@@ -162,6 +267,47 @@ The `LLaDA_8B_Base` split of `crb-datasets` is not the input set of the LLaDA-8B
 
 Not released: the seed-study checkpoints, the LLaDA-8B LoRA adapters, the Sudoku checkpoints, and
 α = 0.9999, for which the sweep script accepts the value but no model was uploaded.
+
+### OpenCodeInstruct reference checkpoints
+
+CDLM-OCI and MDLM-OCI are a public baseline that can be retrained and evaluated without the gated
+paper corpus. **They are not the paper's models, and no number in the paper comes from them.**
+
+- **Training.** They were trained on the rendered OpenCodeInstruct data
+  ([OpenCodeInstruct variant](#opencodeinstruct-variant)) with
+  `ARM=cdlm bash training/scripts/train_0.5b_opencodeinstruct.sh` and `ARM=mdlm ...`. All other
+  settings are the defaults: seed 42, 4 GPUs, the CDLM-0.5B or MDLM-0.5B objective, and the
+  long-horizon schedule stopped at step 2000.
+- **Code and hardware.** They were trained at commit 5e52812 of this repository. No code in
+  `training/` changed between that commit and v1.0-corrective-training; only `README.md` and
+  comments in `requirements.txt` differ. The runs used 4 × A100-PCIE-40GB and took about 19 min
+  each. Each checkpoint is the run's step-2000 HF export.
+- **Weights.** The weights are unchanged since the first upload. Later Hub commits changed only
+  `config.json` (`torch_dtype`) and the model card. Use the pinned revisions above.
+- **Gradient.** Like every 0.5B run, they were trained with the gradient described in
+  [Effective gradient](#effective-gradient).
+
+To evaluate them, use the launchers in [`../evaluation/`](../evaluation/README.md) with the pinned
+revision (`run_crb.sh ... --model_revision <rev>`, `run_codegen_eval.sh <id>@<rev> ...`).
+
+Reference results on CRB, with `n_replace` 1, confidence threshold 0.9, and the macro average over
+the 12 dataset × error-type cells:
+
+| Model | Pass@1 T=1 | T=2 | T=3 | T=4 | Confidence gap | Top-1 / Top-3 / Top-5 |
+| --- | --- | --- | --- | --- | --- | --- |
+| CDLM-OCI | 0.2196 | 0.3018 | 0.3029 | 0.3070 | 0.1919 | 0.2517 / 0.4883 / 0.6495 |
+| MDLM-OCI | 0.1401 | 0.2226 | 0.2352 | 0.2387 | 0.0987 | 0.1445 / 0.3575 / 0.5199 |
+
+- **How the numbers were produced.** They were computed with the authors' reference evaluation
+  driver on the local exports of the two runs, whose weights are identical to the Hub files.
+- **Agreement with the public launcher.** The public CRB launcher (`run_crb.sh`), run on the Hub id
+  of CDLM-OCI, reproduced all 96 refined and history files byte-identically and 44 of 48 Pass@1
+  cells. The 4 differing cells all come from HumanEval/139, which runs close to the 8 s test
+  timeout, so it can flip in any cell. The largest change to a headline number is 0.00086.
+- **CDLM-OCI vs MDLM-OCI.** With a paired exact McNemar test at `n_replace` 1, CDLM-OCI's Pass@1 is
+  higher by +0.0756 at T = 1 (p = 6e-43) and by +0.0784 at T = 4 (p = 6e-27).
+- **Code generation.** On HumanEval with the vanilla decoder (`run_codegen_eval.sh` on the Hub id;
+  10 samples, temperature 0.8, 128 steps), CDLM-OCI scores pass@1 0.2165 and pass@10 0.4146.
 
 ### Provenance of CDLM-0.5B and MDLM-0.5B
 
@@ -188,20 +334,33 @@ Not released: the seed-study checkpoints, the LLaDA-8B LoRA adapters, the Sudoku
   `save_time_interval_minutes` (170 → 0), `eval_every` (1000 → 0) and `eval_before_train`
   (true → false). The original `train_path` was one directory read in `os.listdir` order; the
   launcher uses the recorded order instead (see [Data](#data)).
-- **Not retrained.** No 2000-step run of the release scripts has been compared with the released
-  checkpoints.
+- **Not retrained.** No 2000-step run of the release scripts has been compared with CDLM-0.5B or
+  MDLM-0.5B.
 
 ## Environment
 
-The 0.5B runs used Python 3.11 with torch 2.5.0 (CUDA 12.4 build), flash-attn 2.7.4.post1 and
-liger-kernel 0.5.8 on Linux x86_64:
+The 0.5B runs used Python 3.11.13 with torch 2.5.0 (CUDA 12.4 build), flash-attn 2.7.4.post1 and
+liger-kernel 0.5.8 on Linux x86_64. glibc >= 2.28 is required: the pinned pyarrow wheel needs 2.28,
+and the numpy and pillow wheels need 2.27. On older systems pip falls back to building them from
+source.
 
 ```bash
-conda create -n cdlm-train python=3.11 -y && conda activate cdlm-train
+conda create -n cdlm-train python=3.11.13 -y && conda activate cdlm-train
 pip install torch==2.5.0 --index-url https://download.pytorch.org/whl/cu124
 pip install https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.5cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
-pip install -r training/requirements.txt
+pip install -r training/requirements.txt -c training/constraints.txt
+pip check
 ```
+
+`requirements.txt` pins 22 packages. `constraints.txt` pins all 83 packages of the environment,
+transitive dependencies included:
+- **Where it comes from.** It is the `pip freeze` of an environment built with these commands, in
+  which `ARM=cdlm SEED=1234 NPROC=2 STOP_STEP=2 bash training/scripts/train_0.5b.sh` reproduced the
+  recorded step-1 and step-2 losses of the seed-1234 run bitwise. That environment ran
+  Python 3.11.16, because `python=3.11` resolved to it.
+- **What it adds.** A dry run of these commands in a fresh environment resolves exactly these 83
+  versions. Without `-c`, pip picks the latest versions of the packages that `requirements.txt`
+  leaves open.
 
 **Which runs used which versions.** The pins in `requirements.txt` are the environment of the
 seed-study runs (seeds 1234 and 2025) and the CDLM + ctw run, which used exactly this code. The
@@ -210,7 +369,8 @@ transformers 4.54.1, tokenizers 0.21.4 and datasets 3.6.0. The pinned environmen
 headline data stream bitwise: a fresh MDLM run with `train_0.5b.sh` matches the recorded losses of
 steps 1 and 2, and the frozen replay above matches step 2001 for both arms. datasets 3.6.0 and 4.2.0
 therefore give the same stream here. To use the headline versions instead, run
-`pip install transformers==4.54.1 tokenizers==0.21.4 datasets==3.6.0` after `requirements.txt`.
+`pip install transformers==4.54.1 tokenizers==0.21.4 datasets==3.6.0` (without `-c`) after the
+commands above.
 That combination is consistent with the other pins but was not re-run with this snapshot.
 
 `requirements.txt` has more notes. The points that matter most:
@@ -252,14 +412,20 @@ entity "null". The W&B run id is the run name, with `resume="allow"`. The defaul
 `train_0.5b.sh` is deterministic, so a second run with the same name in the same entity and project
 continues the earlier W&B run, and W&B ignores the new run's steps up to the earlier run's last
 one. Use a new `RUN_NAME` per attempt. The α-sweep and ctw scripts put a timestamp in the name.
-Online logging has not been tested against the W&B server.
+Online logging has not been tested against the W&B server. The offline history is the only
+full-precision record of the losses; `python training/tools/read_wandb_history.py <run>` prints it.
 
 ## Data
 
-All 0.5B runs train on the Nemotron-SFT-Code subset of the gated dataset
+All 0.5B paper runs train on the Nemotron-SFT-Code subset of the gated dataset
 [`nvidia/Nemotron-Pretraining-SFT-v1`](https://huggingface.co/datasets/nvidia/Nemotron-Pretraining-SFT-v1)
-(78 parquet shards, 76.4M rows, 59.3 GB). The subset is used as-is, with no preprocessing. To
-download it, first accept the dataset terms on the Hub, then run:
+(78 parquet shards, 76.4M rows, 59.3 GB). The subset is used as-is, with no preprocessing.
+
+The dataset is gated with manual approval. To get access, request it on its Hub page, which
+includes accepting the NVIDIA Data Agreement for Model Training. NVIDIA reviews each request
+manually. The dataset is needed only to retrain the paper's own checkpoints. You don't need it to
+use the released checkpoints, to train the OpenCodeInstruct variant below, or for any evaluation.
+Once access is granted, run:
 
 ```bash
 huggingface-cli login
@@ -302,15 +468,31 @@ bash training/scripts/train_0.5b_opencodeinstruct.sh           # ARM, SEED, NPRO
 ```
 
 **This is not the paper's data. Models trained on it are not the paper's models, and their results
-are not the paper's results.** No released checkpoint and no reported number comes from it. See
+are not the paper's results.** No number in the paper comes from it. Two reference checkpoints
+trained on it with this script are released, CDLM-OCI and MDLM-OCI (see
+[OpenCodeInstruct reference checkpoints](#opencodeinstruct-reference-checkpoints)). See
 [`data_prep/README.md`](data_prep/README.md#ungated-substitute-opencodeinstruct) for how the data is
 rendered and how it differs from the paper corpus.
 
+For a smoke test, `--shards N` downloads and renders only the first N of the 50 shards and writes a
+`train_path.txt` that lists only them. Use a separate `--local_dir`, so that the full
+`train_path.txt` is not replaced:
+
+```bash
+python training/data_prep/prepare_opencodeinstruct.py --shards 1 --local_dir data/oci-smoke   # 133 MB download
+OCI_TRAIN_PATH_FILE=data/oci-smoke/OpenCodeInstruct-text/train_path.txt STOP_STEP=2 \
+    bash training/scripts/train_0.5b_opencodeinstruct.sh
+```
+
+The rendered shard is identical to the same shard of a full run.
+
 ## Scripts and paper experiments
 
-All commands run from the repository root. The scripts find their own paths, create the run
-directory under `OUTPUT_DIR` (default `training/outputs/`) and print every hyperparameter before
-starting.
+All commands in this README and in [`data_prep/README.md`](data_prep/README.md) are written to run
+from the repository root. The scripts find their own paths, so they also work from any other
+directory; only relative paths you pass (`DATA_DIR`, `OUTPUT_DIR`, `BASE_MODEL`, `--local_dir`, ...)
+are resolved against the directory you run them from. The launchers create the run directory under
+`OUTPUT_DIR` (default `training/outputs/`) and print every hyperparameter before starting.
 
 | Paper experiment | Command | Settings | LR regime |
 | --- | --- | --- | --- |
@@ -329,6 +511,9 @@ Notes on the mapping:
   Hub: those nine plus α = 0.04, 0.06 and 0.08. The submission's text speaks of 10 models.
 - **Table 3.** Its "Open-dCoder-0.5B" row is the untrained base model `fredzzp/open-dcoder-0.5B`
   (0.143 at τ = 0.9, as in Table 1), not MDLM-0.5B.
+- **CDLM + ctw.** "Clean-token supervision" means the "clean" term of L (`clean_token_wt` = 0.1).
+  The CDLM runs without that term also receive some gradient on clean visible tokens, through the
+  "noise" term ([Effective gradient](#effective-gradient)).
 
 Shared 0.5B settings (the config plus the launcher flags):
 
@@ -380,7 +565,7 @@ The `scripts/` launchers read these environment variables:
 | `PAPER_ORDER` | 1: read the shards in the order of `DATA_DIR/../train_path_paper_order.txt` when it exists; 0: `os.listdir` order | 1 |
 | `TRAIN_PATH` | comma-separated absolute shard directories, passed verbatim; overrides `DATA_DIR` and `PAPER_ORDER` | unset |
 | `OUTPUT_DIR` | where run directories are created | `training/outputs` |
-| `BASE_MODEL` | Hub id or local directory; a relative path is relative to the directory you run the script from | `fredzzp/open-dcoder-0.5B` |
+| `BASE_MODEL` | Hub id (loaded from its current `main`) or local directory; a relative path is relative to the directory you run the script from. To pin the revision, pass a local snapshot ([Reproducibility notes](#reproducibility-notes)) | `fredzzp/open-dcoder-0.5B` |
 | `WANDB_MODE` | `offline`, `online` or `disabled` | `offline` |
 | `WANDB_PROJECT` | W&B project | `Qwen2.5-Coder-0.5B` (`train_0.5b.sh`), `mixture_ablation` (the other two) |
 | `WANDB_ENTITY` | W&B entity | unset: the account's default entity |
@@ -391,7 +576,7 @@ The `scripts/` launchers read these environment variables:
 | --- | --- | --- |
 | `ARM` | `cdlm` or `mdlm` | `cdlm` |
 | `SEED` | random seed | 42 |
-| `STOP_STEP` | step to save at and stop | 2000 |
+| `STOP_STEP` | step to save at and stop; see [How `train_0.5b.sh` stops](#how-train_05bsh-stops) for small values | 2000 |
 | `RUN_NAME` | name of the run directory, also the W&B run name and id; must not contain `/ : ; , # ? '` | `open-dcoder-0.5B-<ARM>-seed<SEED>-step<STOP_STEP>` |
 | `PRUNE_DCP` | 1 deletes the ~2.6 GB of dcp shards after the HF export | 0 |
 | `STOP_GRACE_SECONDS` | seconds between SIGINT and SIGKILL when stopping | 60 |
@@ -410,10 +595,22 @@ alive after `STOP_GRACE_SECONDS` get SIGKILL.
 
 - A few more optimizer steps may run between the checkpoint and the stop. The saved checkpoint is
   unaffected.
+- **Small `STOP_STEP`.** Training keeps saving every `STOP_STEP` steps until the stop takes effect,
+  so a small `STOP_STEP` may also write the next checkpoint. For example, a `STOP_STEP=2` run also
+  wrote `global_step_4`, 3.7 GB more, and the [HumanEval hook message](#reproducibility-notes)
+  appeared twice. Nothing uses the
+  extra checkpoint, so delete it if disk space matters. The conversion command printed at the end
+  selects `STOP_STEP` (`STEP=<STOP_STEP>`).
 - The end of `train.log` then shows torchrun's `Received Signals.SIGINT death signal` warnings and
   `KeyboardInterrupt` tracebacks. They are expected.
-- `train.log` is the authoritative record. W&B completeness is best effort: a rank blocked in a
-  collective is killed by torchrun after 30 s, and its last offline steps can be lost.
+- **Full-precision losses.** `train.log` is the authoritative record of the run, but it rounds the
+  loss, its components and `grad_norm` to 2 decimals. The full-precision values are only in the
+  W&B history, which rank 0 writes (offline by default, under `<run>/wandb/`). To print them, run
+  `python training/tools/read_wandb_history.py <run>` (`--help` for options). The bitwise loss
+  comparisons in this README use that history. With `WANDB_MODE=disabled`, no full-precision record
+  is kept.
+- **W&B completeness is best effort.** A rank blocked in a collective is killed by torchrun after
+  30 s, and its last offline steps can be lost.
 - Ctrl-C, SIGTERM or a hangup sent to the script stops the run the same way. A second Ctrl-C during
   the grace period kills at once.
 - It needs `setsid` (util-linux).
@@ -430,11 +627,16 @@ is missing, it converts the dcp shards with `tools/convert_dcp_to_hf.py` (CPU, a
 
 ```bash
 bash training/tools/convert_to_hf.sh training/outputs/open-dcoder-0.5B-cdlm-seed42-step2000
+STEP=2 bash training/tools/convert_to_hf.sh training/outputs/open-dcoder-0.5B-cdlm-seed42-step2   # STOP_STEP=2
 bash training/tools/convert_to_hf.sh training/outputs/mixture-mdm-mp0.3-ntw0.1-<timestamp> open-dcoder-ablation-0.3
 # -> training/outputs/models/<name>  (MODE=copy to copy instead of symlink, FORCE_CONVERT=1 to convert the shards)
 ```
 
-`open-dcoder-0.5B-` is prepended to the name unless it already contains `open-dcoder`.
+- **`STEP`.** It selects the checkpoint of a run directory and defaults to 2000. For a
+  `train_0.5b.sh` run with another `STOP_STEP`, set `STEP` to that value. `train_0.5b.sh` prints the
+  command with it, and the script lists the run's steps when the requested one is missing. Given a
+  `global_step_N` directory instead of a run directory, the script uses N.
+- **Name.** `open-dcoder-0.5B-` is prepended to the name unless it already contains `open-dcoder`.
 
 ## Evaluating with the CRB pipeline
 
@@ -489,6 +691,7 @@ Some notes on running these steps:
 | --- | --- | --- | --- |
 | CDLM / MDLM-0.5B, seed 42 | 4 × A100-PCIe-40GB, DDP | about 30 min to step 2000 (about 0.8 s/step) | about 3.8 GB (1.2 GB HF export plus dcp shards) |
 | Seed study | 2 × A100-PCIe-40GB, grad accum 2 | 42–52 min to step 2000 (1.26–1.57 s/step) | about 3.8 GB |
+| CDLM-OCI / MDLM-OCI (not paper runs) | 4 × A100-PCIe-40GB, DDP | about 19 min to step 2000 | about 3.8 GB |
 | α sweep | 4 × H200 | not recorded | about 12 GB, because the in-training eval hook saves extra checkpoints |
 | CDLM + ctw | 4 × A100-PCIe-40GB | about 30 min | about 13 GB |
 | LLaDA-8B LoRA | 4 × A100-PCIe-40GB, about 24 GB peak per GPU | about 46 min per 2000-step arm; the full CRB sweep takes about 1 h 50 min on 4 GPUs | 640 MB adapter |
@@ -501,7 +704,8 @@ size. The seed-study time comes from the logs of those runs.
 
 - **Not bitwise reproducible over a whole run.** `enable_full_determinism` is false, and the
   flash-attn and liger backward passes are nondeterministic. In our checks, release runs matched the
-  recorded losses bitwise at steps 1 and 2 and differed slightly afterwards.
+  recorded losses bitwise at steps 1 and 2 and differed slightly afterwards. These comparisons use
+  the full-precision W&B history (`tools/read_wandb_history.py`), not the rounded `train.log`.
 - **What else determines the data stream.** Besides the seed, the data stream depends on:
   - the shard order (see [Data](#data));
   - the number of data-parallel ranks, because data is sharded per rank.
@@ -509,8 +713,20 @@ size. The seed-study time comes from the logs of those runs.
   Use `NPROC=4` for the seed-42 runs and `NPROC=2` for seeds 1234 and 2025. The α sweep ran on a
   different machine, whose shard order was not recorded; the α-sweep launcher uses the headline
   runs' recorded order.
-- **Base model revision.** `fredzzp/open-dcoder-0.5B` is loaded without a pinned revision, i.e. from
-  the Hub's current `main`.
+- **Base model revision.** The launchers load `fredzzp/open-dcoder-0.5B` from the Hub's current
+  `main` and cannot take a revision.
+  - `main` is revision `d0d86d5b99960c05258bb1f8265dd91564dbac67`. It has been `main` since
+    2025-08-27, before the headline runs of 2025-11-15. Its `model.safetensors` (sha256
+    `59c1a005…`, see [Released checkpoints](#released-checkpoints)) has not changed since
+    2025-08-08.
+  - Runs started from it reproduce the recorded step-1 and step-2 losses bitwise.
+  - To pin it, download that revision and pass the directory as `BASE_MODEL`:
+
+  ```bash
+  hf download fredzzp/open-dcoder-0.5B --revision d0d86d5b99960c05258bb1f8265dd91564dbac67 \
+      --local-dir data/open-dcoder-0.5B-d0d86d5b
+  BASE_MODEL=data/open-dcoder-0.5B-d0d86d5b bash training/scripts/train_0.5b.sh
+  ```
 - **Differences from the original headline runs.** They are listed under
   [Provenance](#provenance-of-cdlm-05b-and-mdlm-05b): checkpointing and evaluation flags only. The
   step-2001 replay ran without the evaluation hook and still matched both headline runs bitwise, so
@@ -525,8 +741,9 @@ size. The seed-study time comes from the logs of those runs.
   ```
 
   followed by `results_files: []` and a warning `No results files found matching pattern: ...`. The
-  message is harmless: the failure is ignored and training continues. `train_0.5b.sh` prints it once,
-  right after the step-`STOP_STEP` checkpoint message. `train_alpha_sweep.sh` and
+  message is harmless: the failure is ignored and training continues. `train_0.5b.sh` prints it once
+  per checkpoint, i.e. right after the step-`STOP_STEP` checkpoint message, and a second time when a
+  small `STOP_STEP` also writes the next checkpoint. `train_alpha_sweep.sh` and
   `train_clean_token_ablation.sh` keep the original `eval_before_train=true` and `eval_every=1000`,
   so it appears three times (before training, at steps 1000 and 2000), and these evaluation steps
   save extra checkpoints, about 8 GB per run.

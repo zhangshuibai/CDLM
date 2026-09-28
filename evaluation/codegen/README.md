@@ -30,11 +30,14 @@ virtual ranks or the batch size changes the samples.
 ## Environment
 
 Use the evaluation environment of [`evaluation/requirements.txt`](../requirements.txt) (Python 3.11;
-the install order is in its header). The verification below ran in an environment with exactly those
-versions (torch 2.5.0+cu121, transformers 4.54.1, datasets 3.6.0, evaluate 0.4.5, liger-kernel 0.5.8,
-...) on NVIDIA A100-PCIE-40GB GPUs (driver 560.35.03). liger-kernel matters: when it is importable,
+the install order in its header is mandatory, see [`ENVIRONMENT.md`](../ENVIRONMENT.md#install)).
+The verification below ran in an environment with exactly those versions (torch 2.5.0+cu121,
+transformers 4.54.1, datasets 3.6.0, evaluate 0.4.5, liger-kernel 0.5.8, ...) on NVIDIA
+A100-PCIE-40GB GPUs (driver 560.35.03). liger-kernel matters: when it is importable,
 veomni's Qwen2 runs RMSNorm, the MLP and the rotary embedding with its triton kernels, so the sampled
-tokens change without it.
+tokens change without it. The run therefore stops if liger-kernel cannot be imported, and warns if
+torch, transformers, tokenizers, liger-kernel, triton, accelerate, datasets, evaluate or
+huggingface-hub differ from the verified versions.
 
 Do not pip-install Open-dLLM or its lm-evaluation-harness. The launcher puts the repository's
 `Open-dLLM/eval/eval_completion`, `Open-dLLM/lm-evaluation-harness` and `Open-dLLM` on `PYTHONPATH`;
@@ -46,22 +49,33 @@ imported from the repository.
 ```bash
 # one published model, all four benchmarks, both decoders, on GPUs 0-3 with 4 workers per GPU
 bash evaluation/codegen/run_codegen_eval.sh \
-    Shuibai12138/Open-Dcoder-0.5B-mixture-mdm-step2000@4581e1d4215a4055ccce6eaaf898f27276a8759c \
+    Shuibai12138/Open-Dcoder-0.5B-mixture-mdm-step2000@5a7170e7c2333e41d5312c690ac4818722a76c3a \
     outputs/codegen/cdlm 0,1,2,3
+
+# the OpenCodeInstruct reference checkpoint, HumanEval, vanilla decoder, one GPU
+bash evaluation/codegen/run_codegen_eval.sh \
+    Shuibai12138/Open-Dcoder-0.5B-CDLM-OpenCodeInstruct@8eb87fe2ab6850ced7606c8a678c84f1b28fd170 \
+    outputs/codegen/cdlm_oci 0 4 vanilla humaneval
 
 # a local HF checkpoint, HumanEval only, vanilla decoder, one GPU
 bash evaluation/codegen/run_codegen_eval.sh path/to/checkpoint outputs/codegen/mine 0 4 vanilla humaneval
 
 # spot check: only the first 3 problems of every virtual rank (a few minutes on one GPU)
 MAX_DOCS=3 bash evaluation/codegen/run_codegen_eval.sh <model> outputs/codegen/spot 0 4 vanilla humaneval
+
+# only the checks below, on the CPU (no GPU needed); exit 0 if all pass
+PREFLIGHT_ONLY=1 bash evaluation/codegen/run_codegen_eval.sh <model> outputs/codegen/check 0 4 vanilla humaneval
+python evaluation/codegen/codegen_eval.py preflight --model <model> --algs vanilla --tasks humaneval
 ```
 
 Arguments: `MODEL OUT_DIR [GPUS=0] [PROCS_PER_GPU=4] [ALGS=vanilla,remdm] [TASKS=humaneval,humaneval_plus,mbpp,mbpp_plus]`.
 They can also be given as environment variables (`GPUS`, `PROCS_PER_GPU`, `ALGS`, `TASKS`); `PYTHON`
-selects the interpreter and `MAX_DOCS` runs a spot check. `MODEL` is a local HF checkpoint directory,
-a Hub id, or `hub_id@revision`, which is downloaded at that revision (a Hub id without a revision is
-resolved to the current commit, which is recorded in `summary.json` with a warning). Rerunning an
-interrupted run with the same `OUT_DIR` skips the shards that finished.
+selects the interpreter, `MAX_DOCS` runs a spot check, `PREFLIGHT_ONLY=1` runs only the checks and
+`HF_SCRIPTS_VERSION` selects the `code_eval` metric version (default `v0.4.0`, the verified module;
+any other module fails its md5 check). `--help` prints the usage. `MODEL` is a local HF checkpoint
+directory, a Hub id, or `hub_id@revision`, which is downloaded at that revision (a Hub id without a
+revision is resolved to the current commit, which is recorded in `summary.json` with a warning).
+Rerunning an interrupted run with the same `OUT_DIR` skips the shards that finished.
 
 The 4 virtual ranks × decoders × benchmarks (up to 32 shards) run as independent single-GPU worker
 processes, `len(GPUS) × PROCS_PER_GPU` at a time; a 0.5B HumanEval worker (batch size 5) uses about
@@ -71,21 +85,39 @@ preflight; the workers run with `HF_HUB_OFFLINE=1` and read the local caches onl
 **The benchmarks execute model-generated code** (`HF_ALLOW_CODE_EVAL=1`, in subprocesses with the
 `code_eval` reliability guard). Run the evaluation in a container or another isolated environment.
 
-### Published models
+### Models
 
-| Key | Model | Hub id | Revision used by the paper runs | `model.safetensors` sha256 |
+| Key | Model | Hub id | Pinned revision | `model.safetensors` sha256 |
 | --- | --- | --- | --- | --- |
-| `base` | Open-dCoder-0.5B | `fredzzp/open-dcoder-0.5B` | `d0d86d5b99960c05258bb1f8265dd91564dbac67` | `59c1a005…8f77b6e` |
-| `mdlm` | MDLM-0.5B | `Shuibai12138/Open-Dcoder-0.5B-baseline-mdm-step2000` | `b78b055f3a1f0e683d3893783c10fbfd939b0cf7` | `4f1f412c…344ff36e` |
-| `cdlm` | CDLM-0.5B | `Shuibai12138/Open-Dcoder-0.5B-mixture-mdm-step2000` | `4581e1d4215a4055ccce6eaaf898f27276a8759c` | `e43f9fa6…fdf8a680` |
+| `base` | Open-dCoder-0.5B | `fredzzp/open-dcoder-0.5B` | `d0d86d5b99960c05258bb1f8265dd91564dbac67` | `59c1a005f4b672bdd3bbdab6258b283dff3b87bab5cc4bbc0d479e8388f77b6e` |
+| `mdlm` | MDLM-0.5B | `Shuibai12138/Open-Dcoder-0.5B-baseline-mdm-step2000` | `fa5eef962d343a0d813d1f963a5d44c39deaed45` | `4f1f412cdac13553b76fd8de569ae9ed5a95447dfabaaf16da508d09344ff36e` |
+| `cdlm` | CDLM-0.5B | `Shuibai12138/Open-Dcoder-0.5B-mixture-mdm-step2000` | `5a7170e7c2333e41d5312c690ac4818722a76c3a` | `e43f9fa6b4cccfc18a2bac8925d64f5a020fa6a6d34db2c801220e22fdf8a680` |
+| none | CDLM-OCI (not a paper model) | `Shuibai12138/Open-Dcoder-0.5B-CDLM-OpenCodeInstruct` | `8eb87fe2ab6850ced7606c8a678c84f1b28fd170` | `3ae362eb296006bcd139234967bcc5503296b7912261fda337b867d44713acd4` |
+| none | MDLM-OCI (not a paper model) | `Shuibai12138/Open-Dcoder-0.5B-MDLM-OpenCodeInstruct` | `535b36930a32109c87986c341bf554cc42e76b2e` | `31521c7d9f5c02fd2d6b4769ae8d99490c4261af0bc5b566d42d0076221067c4` |
 
-Later commits of the two Shuibai12138 repositories add only a model card; the weights and tokenizer
-files are the same. The full hashes are in `reference/recorded_runs.json`.
+- The paper's runs loaded MDLM-0.5B at `b78b055f3a1f0e683d3893783c10fbfd939b0cf7` and CDLM-0.5B at
+  `4581e1d4215a4055ccce6eaaf898f27276a8759c` (the `revision` fields of `reference/recorded_runs.json`).
+  The pinned revisions add only a model card; the weights, config and tokenizer files are the same.
+- The key is the name `compare --reference` takes. The run matches a model to its recorded run by
+  the sha256 of its weights.
+- CDLM-OCI and MDLM-OCI are reference checkpoints for the released training path, trained on
+  `nvidia/OpenCodeInstruct` with `training/scripts/train_0.5b_opencodeinstruct.sh` (`ARM=cdlm` and
+  `ARM=mdlm`). No paper number comes from them, and `recorded_runs.json` holds no recorded run of
+  them, because its format needs per-problem digests of a recorded run. `reference_check` therefore
+  stays empty for them. Their reference numbers are in
+  [`evaluation/README.md`](../README.md#opencodeinstruct-reference-checkpoints). The only
+  code-generation reference number is CDLM-OCI on HumanEval with the vanilla decoder: pass@1 0.2165
+  and pass@10 0.4146. It comes from a run of this launcher with the Hub id, which resolved to
+  `6a3f74ef71272553948f2ebcb307acc702820f91`; that revision differs from the pinned one only in
+  `README.md`.
 
 ## What the run checks
 
-Before any GPU work, `run` stops if one of these fails:
+Before any GPU work, `run` stops if one of these fails (`preflight`, or `PREFLIGHT_ONLY=1` with the
+launcher, runs only these checks, on the CPU):
 
+- **Packages.** liger-kernel must be importable. Other version differences from the verified
+  environment only print a warning.
 - **Code.** Every file in `MANIFEST.md5` (188 files: `eval_completion`, the lm-eval package with only its
   `humaneval/` and `mbpp/` tasks, and `veomni`) must have the listed md5. The list is identical to the
   verified protocol that reproduced the recorded runs. The `code_eval` metric module that the task
@@ -113,7 +145,8 @@ samples (`reference_check` in `summary.json`; a warning is printed if anything d
 - `summary.json`: pass@1 and pass@10 with standard errors per decoder and benchmark, the averages over
   HumanEval / HumanEval+ (`he_avg_*`), MBPP / MBPP+ (`mbpp_avg_*`) and all four (`macro4_*`), the model
   provenance and preflight results, the manifest and input digests, package versions, the repository
-  commit and `reference_check`;
+  commit (`env.repo_commit`, from `git rev-parse HEAD`; `env.repo_describe`, from
+  `git describe --always --dirty`) and `reference_check`;
 - `samples_<task>__<alg>.jsonl`: per problem the raw and sanitized completions, pass@1, pass@10 and the
   lm-eval doc / prompt / target hashes (the fields of lm-eval's `--log_samples` files);
 - `metrics_<task>__<alg>.json` and `shards/*.log`, `shards/*.meta.json` (timings, per worker).

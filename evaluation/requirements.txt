@@ -1,11 +1,15 @@
 # Evaluation environment: CRB refinement + scoring (refine_code.py, evaluate_code.py,
 # codecorrection/generate.py) and code generation (Open-dLLM/eval/eval_completion/eval.py with the
-# vendored Open-dLLM/lm-evaluation-harness). Python 3.11, Linux x86_64. See ENVIRONMENT.md.
+# vendored Open-dLLM/lm-evaluation-harness). Python 3.11, Linux x86_64 with glibc >= 2.28. See ENVIRONMENT.md.
 #
-# Install order (torch and flash-attn must come first):
+# Install order (mandatory: torch and flash-attn must come first):
 #   pip install torch==2.5.0 --index-url https://download.pytorch.org/whl/cu121
 #   pip install https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.5cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
 #   pip install -r evaluation/requirements.txt
+#   pip check
+# On its own this file does not install: PyPI's torch 2.5.0 (the CUDA 12.4 build) requires
+# nvidia-nvjitlink-cu12==12.4.127, which conflicts with the pin below, and flash-attn has no
+# wheel on PyPI.
 #
 # Every version below is the one of the environment that reproduced the paper's CRB and
 # code-generation numbers bitwise (torch 2.5.0+cu121). Do not pip-install Open-dLLM or its

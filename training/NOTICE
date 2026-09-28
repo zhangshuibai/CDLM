@@ -53,7 +53,9 @@ objective and supporting changes):
   veomni/models/transformers/qwen2/modeling_qwen2.py
   veomni/models/transformers/qwen3/modeling_qwen3.py
       Weighted cross-entropy on corrupted (noise_token_wt) and clean
-      (clean_token_wt) visible tokens; confidence logging.
+      (clean_token_wt) visible tokens; confidence logging. These weights
+      define the loss value; for the gradient that results with
+      liger-kernel 0.5.8, see README.md, "Effective gradient".
   veomni/distributed/parallel_state.py
   veomni/distributed/sequence_parallel/comm.py
       45-minute process-group timeouts.

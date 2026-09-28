@@ -11,8 +11,14 @@ documents of Nemotron-SFT-Code:
 Nothing precedes "input: " and nothing follows the solution (EOS is appended at tokenization).
 The fields are used verbatim: no row is filtered, modified or reordered.
 
-    python data_prep/prepare_opencodeinstruct.py            # download, check, render
-    python data_prep/prepare_opencodeinstruct.py --sha256   # also hash every downloaded shard
+    python training/data_prep/prepare_opencodeinstruct.py            # download, check, render
+    python training/data_prep/prepare_opencodeinstruct.py --sha256   # also hash every downloaded shard
+    python training/data_prep/prepare_opencodeinstruct.py --shards 1 --local_dir <dir>   # first shard only
+
+--shards N restricts every step to the first N shards in filename order: only they are downloaded,
+checked and rendered, and train_path.txt lists only their directories. Use it for smoke tests,
+in a separate --local_dir so that the full train_path.txt is not replaced. Each rendered shard
+is identical to the same shard of a full run.
 
 Layout under --local_dir (default <repo>/data):
 
@@ -201,6 +207,13 @@ def main():
     parser.add_argument("--sha256", action="store_true", help="hash every downloaded shard (6.9 GB)")
     parser.add_argument("--tokenizer", default="fredzzp/open-dcoder-0.5B", help="for the token-count estimate")
     parser.add_argument("--estimate_rows", type=int, default=500, help="rows per shard tokenized for the estimate")
+    parser.add_argument(
+        "--shards",
+        type=int,
+        metavar="N",
+        help="only the first N shards in filename order (e.g. 1 for a smoke test): download, check and render "
+        "those, and list only them in train_path.txt",
+    )
     args = parser.parse_args()
 
     local_dir = os.path.abspath(args.local_dir)
@@ -208,6 +221,13 @@ def main():
     raw_dir = os.path.join(raw_root, "data")
     text_dir = os.path.join(local_dir, TEXT_SUBDIR)
     manifest = read_manifest()
+    known = {name for name, *_ in manifest}
+    if [name for name, *_ in manifest] != sorted(known):
+        sys.exit(f"{MANIFEST} is not in filename order")
+    if args.shards is not None:
+        if not 1 <= args.shards <= len(manifest):
+            parser.error(f"--shards must be between 1 and {len(manifest)} (got {args.shards})")
+        manifest = manifest[: args.shards]
 
     if not args.skip_download:
         from huggingface_hub import snapshot_download
@@ -216,17 +236,26 @@ def main():
             REPO_ID,
             repo_type="dataset",
             revision=REVISION,
-            allow_patterns=["data/*.parquet"],
+            allow_patterns=(
+                ["data/*.parquet"] if args.shards is None else [f"data/{name}" for name, *_ in manifest]
+            ),
             local_dir=raw_root,
             max_workers=args.max_workers,
         )
 
     expected = {name for name, *_ in manifest}
+    # With --shards, the other shards of the manifest may be present (e.g. from a full download).
+    allowed = expected if args.shards is None else known
     found = set(os.listdir(raw_dir)) if os.path.isdir(raw_dir) else set()
-    if found != expected:
+    if expected - found or found - allowed:
+        what = (
+            f"exactly the {len(expected)} shards and nothing else"
+            if args.shards is None
+            else f"the first {len(expected)} shards and no file outside the manifest"
+        )
         sys.exit(
-            f"{raw_dir} must contain exactly the {len(expected)} shards and nothing else "
-            f"(missing: {sorted(expected - found)[:5]}, unexpected: {sorted(found - expected)[:5]})"
+            f"{raw_dir} must contain {what} "
+            f"(missing: {sorted(expected - found)[:5]}, unexpected: {sorted(found - allowed)[:5]})"
         )
     for name, size, _, sha256 in manifest:
         path = os.path.join(raw_dir, name)
@@ -279,12 +308,20 @@ def main():
     )
 
     out = os.path.join(text_dir, TRAIN_PATH_FILE)
+    try:
+        with open(out, encoding="utf-8") as f:
+            previous = f.read().strip().split(",")
+    except OSError:
+        previous = None
+    if previous is not None and previous != shard_dirs:
+        print(f"WARNING: replacing {out}, which listed {len(previous)} shard(s), with {len(shard_dirs)}")
     tmp = out + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         f.write(",".join(shard_dirs) + "\n")
     os.replace(tmp, out)
-    print(f"shard order (filename order) written to {out}")
-    print(f'use: TRAIN_PATH="$(cat {out})"  or  bash scripts/train_0.5b_opencodeinstruct.sh')
+    subset = "" if args.shards is None else f", first {len(shard_dirs)} of {len(known)} shards only (--shards)"
+    print(f"shard order (filename order{subset}) written to {out}")
+    print(f"use: OCI_TRAIN_PATH_FILE={out} bash training/scripts/train_0.5b_opencodeinstruct.sh")
 
 
 if __name__ == "__main__":

@@ -7,17 +7,38 @@ rounds of confidence-based remasking. It runs the repository's own pipeline
 `PYTHONPATH=<repo>/Open-dLLM`.
 
 ```bash
-# from the repository root, in an environment with torch, transformers, datasets, evaluate,
-# huggingface_hub and numpy (the paper's numbers were produced with torch 2.5.0,
-# transformers 4.54.1, datasets 3.6.0, evaluate 0.4.5 on an A100)
-bash evaluation/crb/run_crb.sh Shuibai12138/Open-Dcoder-0.5B-mixture-mdm-step2000 cdlm --gpus 0
+# from the repository root, in the evaluation environment of evaluation/ENVIRONMENT.md
+# (liger-kernel included: without it the numerics change, and the launcher stops)
+bash evaluation/crb/run_crb.sh Shuibai12138/Open-Dcoder-0.5B-mixture-mdm-step2000 cdlm --gpus 0 \
+    --model_revision 5a7170e7c2333e41d5312c690ac4818722a76c3a
 bash evaluation/crb/run_crb.sh /path/to/hf_checkpoint my_model --gpus 0,1 --jobs 4
-bash evaluation/crb/run_crb.sh fredzzp/open-dcoder-0.5B base --nr 1          # n_replace=1 only
+bash evaluation/crb/run_crb.sh fredzzp/open-dcoder-0.5B base --nr 1 \
+    --model_revision d0d86d5b99960c05258bb1f8265dd91564dbac67              # n_replace=1 only
+bash evaluation/crb/run_crb.sh Shuibai12138/Open-Dcoder-0.5B-CDLM-OpenCodeInstruct cdlm_oci --nr 1 \
+    --model_revision 8eb87fe2ab6850ced7606c8a678c84f1b28fd170 --phase preflight   # checks only, CPU
 ```
 
-Run `bash evaluation/crb/run_crb.sh` without arguments for all options (`--nr`, `--steps`,
-`--datasets`, `--error_types`, `--out_dir`, `--jobs`, `--port_base`, `--eval_jobs`, `--phase`,
-`--purge`). Outputs go to `evaluation/crb/outputs/` by default:
+`bash evaluation/crb/run_crb.sh --help` prints every option:
+
+| option | default | meaning |
+|---|---|---|
+| `--gpus` | `0` | comma-separated GPU ids |
+| `--jobs` | `3` | concurrent refinement processes, one GPU each; job slot i runs on GPU i mod (number of `--gpus`), so several jobs can share a GPU |
+| `--port_base` | `29500` | rendezvous ports `port_base` .. `port_base+jobs-1` |
+| `--eval_jobs` | `8` | concurrent CPU scoring processes |
+| `--nr` | `"1 2 3 4 5"` | n_replace levels |
+| `--steps` | `"2 3 4 5"` | `--refined_steps` values; T = steps - 1 |
+| `--datasets` | `"human-eval human-eval+ mbpp mbpp+"` | |
+| `--error_types` | `"operator var literal"` | |
+| `--out_dir` | `evaluation/crb/outputs` | |
+| `--model_revision` | none | Hub revision of MODEL; the snapshot is then used like a local directory |
+| `--phase` | `all` | `all`, `refine`, `eval`, `metrics`, or `preflight` (only the checks, on the CPU; exit 0 if all pass) |
+| `--purge` | off | delete histories and refined jsonl once the summary is complete |
+| `--allow_data_drift` | off | continue if the evaluation datasets differ from the pinned ones |
+
+Environment variables: `CRB_PYTHON`, `CRB_INPUTS_DIR`, `CRB_INPUTS_REPO`, `CRB_INPUTS_REVISION`,
+`CRB_OFFLINE`, `HF_SCRIPTS_VERSION` (default `v0.4.0`). Outputs go to `evaluation/crb/outputs/` by
+default:
 
 | file | content |
 |---|---|
@@ -50,11 +71,17 @@ Published models on the paper's input set (headline, n_replace = 1):
 | `fredzzp/open-dcoder-0.5B` | 0.1452 | 0.2404 | 0.2549 | 0.2632 | 0.1047 | 0.1472 | 0.3447 | 0.5112 |
 | `Shuibai12138/Open-Dcoder-0.5B-baseline-mdm-step2000` (MDLM) | 0.1381 | 0.2363 | 0.2463 | 0.2453 | 0.0976 | 0.1470 | 0.3427 | 0.5028 |
 | `Shuibai12138/Open-Dcoder-0.5B-mixture-mdm-step2000` (CDLM) | 0.1883 | 0.2789 | 0.2814 | 0.2853 | 0.1636 | 0.2277 | 0.4499 | 0.6058 |
+| `Shuibai12138/Open-Dcoder-0.5B-CDLM-OpenCodeInstruct` (CDLM-OCI, not a paper model) | 0.2196 | 0.3018 | 0.3029 | 0.3070 | 0.1919 | 0.2517 | 0.4883 | 0.6495 |
+| `Shuibai12138/Open-Dcoder-0.5B-MDLM-OpenCodeInstruct` (MDLM-OCI, not a paper model) | 0.1401 | 0.2226 | 0.2352 | 0.2387 | 0.0987 | 0.1445 | 0.3575 | 0.5199 |
+
+The pinned revisions, weight hashes and commands for all five are in
+[`evaluation/README.md`](../README.md#models). The two OpenCodeInstruct checkpoints are reference
+checkpoints for the released training path; no paper number comes from them.
 
 On one A100 the full grid took about 35 min of refinement (`--jobs 3`, a few GB of GPU
 memory per job) and 45 min of evaluation (`--eval_jobs 8`) on a lightly loaded machine;
-`--nr 1` is about a fifth of the work. Evaluation executes every program on the CPU and
-slows down on a busy machine.
+`--nr 1` is about a third of the work (12,852 of 37,028 programs). Evaluation executes every
+program on the CPU and slows down on a busy machine.
 
 Refinement is deterministic: rerunning the CDLM checkpoint reproduced every completion and
 every step-0 confidence bitwise. The only nondeterminism is the 8 s execution timeout: a
@@ -67,14 +94,25 @@ depending on machine load; `n_timeout_total` in the summary counts such failures
 By default the paper's input set (60 files, `<tag>_<error>_2_wrong_<n>_evaluated.jsonl`
 with tag `Open-Dcoder-0.5B-mixture-mdm-step2000`, tokenised with the Open-dCoder tokenizer)
 is downloaded from the Hugging Face dataset `Shuibai12138/crb-paper-inputs`
-(directory `open-dcoder-0.5B/`) at `CRB_INPUTS_REVISION` (default: the pinned upload `21cae17423b0`), and checked
-against `paper_inputs.md5`. `CRB_INPUTS_DIR=<dir>` uses a local copy instead
+(directory `open-dcoder-0.5B/`) at `CRB_INPUTS_REVISION` (default: the pinned upload
+`21cae17423b073b152e997746876d6b828b18358`), and checked against `paper_inputs.md5`.
+`CRB_INPUTS_DIR=<dir>` uses a local copy instead
 (`<dir>/open-dcoder-0.5B/<dataset>/evaluated/`, `<dir>/buggy_datasets/<dataset>/evaluated/` or
-`<dir>/<dataset>/evaluated/`). `CRB_OFFLINE=1` never contacts the Hub.
+`<dir>/<dataset>/evaluated/`). `CRB_OFFLINE=1` never contacts the Hub. A local copy of the
+pinned upload:
+
+```bash
+hf download Shuibai12138/crb-paper-inputs --repo-type dataset \
+    --revision 21cae17423b073b152e997746876d6b828b18358 \
+    --include "open-dcoder-0.5B/*" --local-dir crb-paper-inputs
+CRB_INPUTS_DIR=crb-paper-inputs bash evaluation/crb/run_crb.sh <MODEL> <LABEL>
+```
 
 The evaluation datasets are cached at pinned revisions (`crb_evaldata.py`) and all
 evaluation runs offline; the run stops if the test fields differ from the pinned ones
-(`--allow_data_drift` to continue anyway).
+(`--allow_data_drift` to continue anyway). The `code_eval` metric is fetched at
+`HF_SCRIPTS_VERSION` (default `v0.4.0`), and the run stops if its files differ from the
+verified ones; there is no override.
 
 ## Safety checks
 
@@ -90,6 +128,10 @@ evaluation runs offline; the run stops if the test fields differ from the pinned
   positions (token indices) would be misaligned.
 * The pipeline files and `Open-dLLM/veomni` are hashed; a difference from the release that
   was verified against the paper's numbers prints a warning and is recorded in the metadata.
+* `liger-kernel` must be importable (veomni's Qwen2 otherwise runs plain PyTorch layers, which
+  changes the numerics). A version of torch, transformers, tokenizers, liger-kernel, triton,
+  accelerate, datasets, evaluate or huggingface-hub other than the verified one prints a
+  warning; the versions are recorded in `run_meta.json`.
 
 ## Building a new input set
 
@@ -115,3 +157,10 @@ python evaluation/crb/crb_table.py --results_dir evaluation/crb/outputs/results 
 python evaluation/crb/crb_compare.py --new evaluation/crb/outputs/runs cdlm \
     --ref <other_out_dir>/runs cdlm --nr 1                    # per-sample diff of two runs
 ```
+
+`crb_table.py` takes any labels, for example `--labels cdlm_oci mdlm_oci --pairs cdlm_oci:mdlm_oci`.
+`crb_compare.py` compares, per cell, the refined jsonl and the per-step histories. A run made
+with `--purge` has neither; for such cells it compares the `*_results_refined_evaluated.jsonl`
+files instead (task id, prompt, completion, step count, `test_passed`), without step-0
+confidences or histories, and counts them in `cells_from_evaluated_only`. It exits with
+status 1 if it compared no cell (wrong root, prefix or grid options).

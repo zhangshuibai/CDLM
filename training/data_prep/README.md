@@ -11,7 +11,8 @@ on the **Nemotron-SFT-Code** subset of
 | Revision | `af7991c59eeb5e53a98bb6b1ee7a96cc3754eb39` (the Hub `main` branch has moved since) |
 | Shards | 78 parquet files, 76,447,340 rows, 59,260,834,163 bytes |
 | Columns | `id`, `text`, `metadata {category, models_used}`; only `text` is used |
-| License | NVIDIA Data Agreement for Model Training, linked on the Hub page as "NVIDIA Open Data License Agreement" (accept it on the Hub first) |
+| License | NVIDIA Data Agreement for Model Training, linked on the Hub page as "NVIDIA Open Data License Agreement" |
+| Access | Gated with manual approval: request access on the Hub page (accepting the agreement), and NVIDIA reviews each request manually. Needed only to retrain the paper's own checkpoints. |
 
 No preprocessing is applied. The parquet shards are passed to `tasks/train_torch.py` as they
 are, with the settings from `configs/pretrain/qwen2_5_coder_500M.yaml` plus
@@ -29,10 +30,15 @@ files), which is what `Nemotron-SFT-Code/` looks like after the download below.
 
 ## Download
 
+Commands in this file are run from the repository root, as in [`../README.md`](../README.md). The
+scripts find their own paths, so they work from any directory. Only relative paths you pass are
+resolved against the current directory.
+
+The download needs a Hub token of an account that has been granted access (the Access row above).
+
 ```bash
-cd training                      # run from the training/ directory
 huggingface-cli login            # or export HF_TOKEN=...
-python data_prep/prepare_nemotron_sft_code.py [--local_dir $DATA_ROOT] [--sha256]
+python training/data_prep/prepare_nemotron_sft_code.py [--local_dir $DATA_ROOT] [--sha256]
 # default local_dir: <repo>/data, i.e. shards in <repo>/data/Nemotron-SFT-Code
 # then: DATA_DIR=$DATA_ROOT/Nemotron-SFT-Code, i.e. --data.train_path=$DATA_ROOT/Nemotron-SFT-Code
 ```
@@ -50,7 +56,7 @@ seen on the machine that ran the paper's runs. To reproduce it elsewhere without
 training code:
 
 ```bash
-python data_prep/prepare_nemotron_sft_code.py --local_dir $DATA_ROOT --skip_download --paper_order
+python training/data_prep/prepare_nemotron_sft_code.py --local_dir $DATA_ROOT --skip_download --paper_order
 # --data.train_path="$(cat $DATA_ROOT/train_path_paper_order.txt)"
 ```
 
@@ -75,7 +81,17 @@ For such uses the release supports
 [`nvidia/OpenCodeInstruct`](https://huggingface.co/datasets/nvidia/OpenCodeInstruct) instead.
 
 **Models trained on OpenCodeInstruct are not the paper's models, and their results are not the
-paper's results.** No released checkpoint and no reported number comes from this data.
+paper's results.** No number in the paper comes from this data. Two reference checkpoints trained
+on it are released:
+- `Shuibai12138/Open-Dcoder-0.5B-CDLM-OpenCodeInstruct` at revision
+  `8eb87fe2ab6850ced7606c8a678c84f1b28fd170`;
+- `Shuibai12138/Open-Dcoder-0.5B-MDLM-OpenCodeInstruct` at revision
+  `535b36930a32109c87986c341bf554cc42e76b2e`.
+
+They were trained with `ARM=cdlm` and `ARM=mdlm bash training/scripts/train_0.5b_opencodeinstruct.sh`
+at commit 5e52812. See
+[`../README.md`](../README.md#opencodeinstruct-reference-checkpoints) for their sha256 and
+reference results.
 
 | | |
 |---|---|
@@ -155,10 +171,9 @@ run. The download takes 6.9 GB, and the rendered shards take 2.7 GB.
 ### Preparation and training
 
 ```bash
-cd training
-python data_prep/prepare_opencodeinstruct.py [--local_dir $DATA_ROOT] [--sha256]
+python training/data_prep/prepare_opencodeinstruct.py [--local_dir $DATA_ROOT] [--sha256] [--shards N]
 # default local_dir: <repo>/data; no Hub login needed
-bash scripts/train_0.5b_opencodeinstruct.sh
+bash training/scripts/train_0.5b_opencodeinstruct.sh
 # same settings and variables as train_0.5b.sh (ARM, SEED, STOP_STEP, NPROC, ...),
 # run name open-dcoder-0.5B-oci-<ARM>-seed<SEED>-step<STOP_STEP>
 ```
@@ -181,6 +196,22 @@ its location). `OpenCodeInstruct-text/` itself is not a valid `DATA_DIR`, becaus
 directories. The data stream still depends on the seed, the number of data-parallel ranks and
 the `datasets` version. Re-running the script skips finished shards; delete a shard's file to
 render it again.
+
+`--shards N` restricts every step to the first N shards in filename order. The script downloads,
+checks and renders only those shards, and writes a `train_path.txt` that lists only them. Use it
+for smoke tests, with a separate `--local_dir` so that a full `train_path.txt` is not replaced (the
+script warns when it replaces a `train_path.txt` that listed other shards). Then point the launcher
+at that file:
+
+```bash
+python training/data_prep/prepare_opencodeinstruct.py --shards 1 --local_dir data/oci-smoke
+OCI_TRAIN_PATH_FILE=data/oci-smoke/OpenCodeInstruct-text/train_path.txt STOP_STEP=2 \
+    bash training/scripts/train_0.5b_opencodeinstruct.sh
+```
+
+With `--shards 1` the download is 133 MB and the rendering takes a few seconds. Without a Hub token
+and with a fresh cache, the rendered shard was identical (`pyarrow.Table.equals`, and byte-identical
+as a file) to shard 000 of a full run. The launcher prints `Train path: TRAIN_PATH (1 entries, ...)`.
 
 On CPU, the rendered shards were fed through the real data pipeline of this snapshot
 (`build_iterative_dataset` and `build_dataloader` with the CDLM collator, `micro_batch_size=3`)

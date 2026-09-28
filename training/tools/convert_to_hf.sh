@@ -12,13 +12,16 @@
 #
 # Usage:
 #   bash training/tools/convert_to_hf.sh RUN_OR_CKPT_DIR [NAME]
+#   STEP=2 bash training/tools/convert_to_hf.sh RUN_DIR      # a train_0.5b.sh run with STOP_STEP=2
 #     RUN_OR_CKPT_DIR  a run directory (with checkpoints/ and model_assets/), or a single checkpoint
 #                      directory such as <run>/checkpoints/global_step_2000
 #     NAME             exported name; "open-dcoder-0.5B-" is prepended unless it already contains
 #                      "open-dcoder"                                   [basename of the run directory]
 #
 # Environment variables [default]:
-#   STEP           step to export                          [2000, or N for .../global_step_N]
+#   STEP           step to export; for a run directory, set it to the run's STOP_STEP when that is
+#                  not 2000 (train_0.5b.sh prints the command with it)
+#                                                          [2000, or N for .../global_step_N]
 #   MODELS_DIR     where the model is exposed              [<repo>/training/outputs/models]
 #   MODE           link | copy                             [link]
 #   FORCE_CONVERT  1: convert the dcp shards even if training wrote an HF export [0]
@@ -62,7 +65,13 @@ else
     fi
 fi
 [[ "${STEP}" =~ ^[0-9]+$ ]] || die "STEP must be an integer (got '${STEP}')"
-[[ -d "${CKPT_DIR}" ]] || die "checkpoint directory not found: ${CKPT_DIR}"
+if [[ ! -d "${CKPT_DIR}" ]]; then
+    steps=""
+    for d in "${RUN_DIR}"/checkpoints/global_step_*; do
+        if [[ -d "${d}" ]]; then steps+=" ${d##*_}"; fi
+    done
+    die "checkpoint directory not found: ${CKPT_DIR}${steps:+ (steps in this run:${steps}; set STEP=N)}"
+fi
 ASSETS_DIR="${RUN_DIR}/model_assets"
 
 NAME="${2:-$(basename "${RUN_DIR}")}"

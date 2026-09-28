@@ -71,6 +71,7 @@ Evaluation and training use separate environments:
   pip install torch==2.5.0 --index-url https://download.pytorch.org/whl/cu121
   pip install https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.5cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
   pip install -r evaluation/requirements.txt
+  pip check
   ```
 
 - **Training**: see [training/README.md](training/README.md#environment). It uses a different torch
@@ -126,6 +127,32 @@ You can modify the following parameters in the example scripts:
 - **`ALGORITHM`**: Refinement algorithm (`self_conf-remask:vanilla` for confidence-based remasking)
 - **`CONFIDENCE_THRESHOLD`**: Confidence threshold for remasking decisions (default: `0.90`)
 
+## Released models and data
+
+| | Hugging Face | Revision | `model.safetensors` sha256 |
+| --- | --- | --- | --- |
+| Open-dCoder-0.5B (base, from Open-dLLM) | [`fredzzp/open-dcoder-0.5B`](https://huggingface.co/fredzzp/open-dcoder-0.5B) | `d0d86d5b99960c05258bb1f8265dd91564dbac67` | `59c1a005f4b672bdd3bbdab6258b283dff3b87bab5cc4bbc0d479e8388f77b6e` |
+| MDLM-0.5B (paper) | [`Shuibai12138/Open-Dcoder-0.5B-baseline-mdm-step2000`](https://huggingface.co/Shuibai12138/Open-Dcoder-0.5B-baseline-mdm-step2000) | `fa5eef962d343a0d813d1f963a5d44c39deaed45` | `4f1f412cdac13553b76fd8de569ae9ed5a95447dfabaaf16da508d09344ff36e` |
+| CDLM-0.5B (paper) | [`Shuibai12138/Open-Dcoder-0.5B-mixture-mdm-step2000`](https://huggingface.co/Shuibai12138/Open-Dcoder-0.5B-mixture-mdm-step2000) | `5a7170e7c2333e41d5312c690ac4818722a76c3a` | `e43f9fa6b4cccfc18a2bac8925d64f5a020fa6a6d34db2c801220e22fdf8a680` |
+| MDLM-OCI (reference, **not a paper model**) | [`Shuibai12138/Open-Dcoder-0.5B-MDLM-OpenCodeInstruct`](https://huggingface.co/Shuibai12138/Open-Dcoder-0.5B-MDLM-OpenCodeInstruct) | `535b36930a32109c87986c341bf554cc42e76b2e` | `31521c7d9f5c02fd2d6b4769ae8d99490c4261af0bc5b566d42d0076221067c4` |
+| CDLM-OCI (reference, **not a paper model**) | [`Shuibai12138/Open-Dcoder-0.5B-CDLM-OpenCodeInstruct`](https://huggingface.co/Shuibai12138/Open-Dcoder-0.5B-CDLM-OpenCodeInstruct) | `8eb87fe2ab6850ced7606c8a678c84f1b28fd170` | `3ae362eb296006bcd139234967bcc5503296b7912261fda337b867d44713acd4` |
+| CRB inputs (dataset) | [`Shuibai12138/crb-paper-inputs`](https://huggingface.co/datasets/Shuibai12138/crb-paper-inputs) | `21cae17423b073b152e997746876d6b828b18358` | — |
+
+- **Paper models.** They are listed under the ids that the CRB launcher accepts, which must contain
+  `open-dcoder`. [`Shuibai12138/CDLM-0.5B`](https://huggingface.co/Shuibai12138/CDLM-0.5B)
+  (`b142acd9ed0546d699cf95e2c84e3e1fdfc11b10`) has the same weights as CDLM-0.5B. The earlier
+  revisions used by the paper's evaluation runs ([evaluation/README.md](evaluation/README.md#models))
+  hold the same weights; later commits changed only the model card.
+- **OCI reference models.** They were trained on the public
+  [`nvidia/OpenCodeInstruct`](https://huggingface.co/datasets/nvidia/OpenCodeInstruct)
+  (`8f3ba5bafe4d6e8db46082cf7ae6741bc370604d`), not on the paper's data, with
+  `ARM=cdlm|mdlm bash training/scripts/train_0.5b_opencodeinstruct.sh` at commit `5e52812`. No paper
+  number comes from them. CRB Pass@1 at `n_replace = 1` (macro over 12 cells, threshold 0.9) after
+  T = 1 and T = 4 refinement steps: CDLM-OCI 0.2196 and 0.3070, MDLM-OCI 0.1401 and 0.2387. See
+  [training/README.md](training/README.md#opencodeinstruct-variant).
+- The ablation checkpoints and the CRB instances are listed in
+  [training/README.md](training/README.md#released-checkpoints).
+
 ## Evaluation
 
 [evaluation/README.md](evaluation/README.md) describes the two evaluations of the paper's 0.5B
@@ -133,11 +160,12 @@ models. Each one is a single script, run from the repository root:
 
 ```bash
 # CRB error localisation and correction (CDLM-0.5B in Tables 3, 4 and 7); add --nr 1 for the headline cells only
-bash evaluation/crb/run_crb.sh Shuibai12138/Open-Dcoder-0.5B-mixture-mdm-step2000 cdlm --gpus 0
+bash evaluation/crb/run_crb.sh Shuibai12138/Open-Dcoder-0.5B-mixture-mdm-step2000 cdlm --gpus 0 \
+    --model_revision 5a7170e7c2333e41d5312c690ac4818722a76c3a
 
 # from-scratch code generation on HumanEval(+) and MBPP(+) (Table 5 top, Table 9)
 bash evaluation/codegen/run_codegen_eval.sh \
-    Shuibai12138/Open-Dcoder-0.5B-mixture-mdm-step2000@4581e1d4215a4055ccce6eaaf898f27276a8759c outputs/codegen/cdlm 0
+    Shuibai12138/Open-Dcoder-0.5B-mixture-mdm-step2000@5a7170e7c2333e41d5312c690ac4818722a76c3a outputs/codegen/cdlm 0
 ```
 
 - Both scripts accept a Hub id or a local checkpoint. They check their code, inputs and model
@@ -247,14 +275,23 @@ python codecorrection/generate.py \
 
 CDLM keeps the standard masked-diffusion corruption and adds one step. After masking, each remaining
 visible token is replaced, with probability `mixture_prob` (α), by a uniformly sampled wrong token.
-The model is then trained to recover the original token at both masked and replaced positions, with
-an extra loss term on replaced positions weighted by `noise_token_wt`. Clean visible tokens receive
-no loss. The CDLM-0.5B checkpoint continues training `fredzzp/open-dcoder-0.5B` on Nemotron-SFT-Code
-for 2000 steps with α = 0.1 and `noise_token_wt` = 0.1. The MDLM baseline uses the same setup with
-α = 0 and `noise_token_wt` = 0.
+The loss is the cross-entropy of the original token at masked and replaced positions, plus an extra
+term on replaced positions weighted by `noise_token_wt` (exact form in
+[training/README.md](training/README.md#objective-as-implemented)). Clean visible tokens have no loss
+term (`clean_token_wt` = 0). The CDLM-0.5B checkpoint continues training `fredzzp/open-dcoder-0.5B` on
+Nemotron-SFT-Code for 2000 steps with α = 0.1 and `noise_token_wt` = 0.1. The MDLM baseline uses the
+same setup with α = 0 and `noise_token_wt` = 0.
+
+**The 0.5B trainer's gradient is not the gradient of this loss.** With `reduction="none"`, the
+backward of liger-kernel 0.5.8's fused linear cross-entropy scales every position's gradient by the
+weight of the micro-batch's first target position. The per-token weights are therefore not
+applied, some micro-batches get zero gradient, and clean visible tokens can receive gradient through
+the noise term. All released 0.5B checkpoints were trained this way, and the logged losses are
+correct; see [training/README.md](training/README.md#effective-gradient). The LLaDA-8B LoRA and
+Sudoku trainers use torch cross-entropy and are not affected.
 
 ```bash
-# accept the dataset terms of nvidia/Nemotron-Pretraining-SFT-v1 on the Hub first
+# first request access to nvidia/Nemotron-Pretraining-SFT-v1 on the Hub and wait for NVIDIA's approval
 huggingface-cli login
 python training/data_prep/prepare_nemotron_sft_code.py --paper_order   # about 59 GB; records the paper's shard order
 ARM=cdlm bash training/scripts/train_0.5b.sh                           # 4 GPUs; ARM=mdlm for the baseline
@@ -263,9 +300,14 @@ ARM=cdlm bash training/scripts/train_0.5b.sh                           # 4 GPUs;
 `--paper_order` writes `data/train_path_paper_order.txt`, and the launcher then streams the shards in
 the order of the paper's runs (it prints a `Shard order:` line; `PAPER_ORDER=0` opts out). Without
 that file, the shards are read in the filesystem's listing order, which in general is not the
-paper's. The training data is gated; `training/scripts/train_0.5b_opencodeinstruct.sh` trains on the
-public OpenCodeInstruct instead, but that is not the paper's data and its results are not the
-paper's results (see [training/README.md](training/README.md#opencodeinstruct-variant)).
+paper's.
+
+The Nemotron dataset is gated with manual approval by NVIDIA. It is needed only to retrain the
+paper's checkpoints; evaluation does not use it. `training/scripts/train_0.5b_opencodeinstruct.sh`
+trains on the ungated OpenCodeInstruct instead. That is not the paper's data, and its results are not
+the paper's results. The two reference models trained this way are listed under
+[Released models and data](#released-models-and-data); see also
+[training/README.md](training/README.md#opencodeinstruct-variant).
 
 - [training/README.md](training/README.md): the exact objective (and how it differs from Eq. (1) as
   printed), environment, data, a map from every script to the paper experiment it reproduces,

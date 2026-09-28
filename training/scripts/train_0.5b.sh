@@ -12,7 +12,9 @@
 # max_steps=2000 would instead give a fully decayed 2000-step cosine, a different model.
 # To keep the long horizon and still end at STOP_STEP, save_steps is set to STOP_STEP and this
 # wrapper stops the job as soon as the step-STOP_STEP HuggingFace checkpoint has been written
-# (SIGINT first, so that W&B can flush, then SIGKILL after STOP_GRACE_SECONDS).
+# (SIGINT first, so that W&B can flush, then SIGKILL after STOP_GRACE_SECONDS). Training continues
+# until the stop takes effect, so with a small STOP_STEP (e.g. 2) the next checkpoint
+# (global_step_<2*STOP_STEP>) may be written too; the step-STOP_STEP checkpoint is unaffected.
 #
 # World size: the published seed-42 checkpoints were trained with NPROC=4 (3 x 4 GPUs x accum 1);
 # the additional seeds 1234 and 2025 with NPROC=2 (3 x 2 GPUs x accum 2). The global batch is
@@ -42,6 +44,8 @@
 #   RUN_NAME              run directory name, also the W&B run name and id (no / : ; , # ? ')
 #                                                   [open-dcoder-0.5B-<ARM>-seed<SEED>-step<STOP_STEP>]
 #   BASE_MODEL            initial checkpoint (Hub id or local directory)       [fredzzp/open-dcoder-0.5B]
+#                         (a Hub id loads its current main; to pin the revision, pass a local
+#                         snapshot directory, see training/README.md "Reproducibility notes")
 #   PRUNE_DCP             1: delete the dcp model/optimizer shards after the HF export [0]
 #   POLL_SECONDS          how often the log is checked for the checkpoint      [10]
 #   STOP_GRACE_SECONDS    seconds between SIGINT and SIGKILL when stopping     [60]
@@ -389,5 +393,5 @@ fi
 echo "======================================"
 echo "Done: ${HF_DIR}"
 echo "Expose it for the evaluation pipeline with:"
-echo "  bash ${REPO_ROOT}/training/tools/convert_to_hf.sh ${RUN_DIR}"
+printf '  STEP=%s bash %q %q\n' "${STOP_STEP}" "${REPO_ROOT}/training/tools/convert_to_hf.sh" "${RUN_DIR}"
 echo "======================================"

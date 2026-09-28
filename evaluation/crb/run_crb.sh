@@ -32,7 +32,7 @@
 #   CRB_INPUTS_DIR       local copy of the input set; otherwise the paper's set is
 #                        downloaded from the Hub dataset CRB_INPUTS_REPO
 #                        (default Shuibai12138/crb-paper-inputs, directory
-#                        open-dcoder-0.5B/) at CRB_INPUTS_REVISION (default main).
+#                        open-dcoder-0.5B/) at CRB_INPUTS_REVISION (default: the pinned upload 21cae17423b0).
 #                        Accepted layouts: DIR/open-dcoder-0.5B/<dataset>/evaluated/,
 #                        DIR/buggy_datasets/<dataset>/evaluated/ or DIR/<dataset>/evaluated/.
 #                        A set written by build_crb_inputs.sh (DIR/crb_inputs_meta.json)
@@ -68,7 +68,7 @@ PAPER_MANIFEST=$HERE/paper_inputs.md5
 PAPER_MANIFEST_MD5=5a5be8972e7066c7fbe2d7c92dbfc1b8
 PAPER_TOKEN_SHA=39197c1ad25f664d2a7da602507e896bba1c83348e40ad51ce979f0aa1f5de0c
 INPUTS_REPO=${CRB_INPUTS_REPO:-Shuibai12138/crb-paper-inputs}
-INPUTS_REVISION=${CRB_INPUTS_REVISION:-main}
+INPUTS_REVISION=${CRB_INPUTS_REVISION:-21cae17423b073b152e997746876d6b828b18358}
 INPUTS_SUBDIR=open-dcoder-0.5B
 
 # pipeline files verified to reproduce the paper's CRB numbers (a mismatch only warns)

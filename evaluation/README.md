@@ -112,7 +112,7 @@ The protocol:
 ### Inputs
 
 By default the launcher downloads the paper's input set: the directory `open-dcoder-0.5B/` of the
-Hugging Face dataset `Shuibai12138/crb-paper-inputs`, at `CRB_INPUTS_REVISION` (default `main`).
+Hugging Face dataset `Shuibai12138/crb-paper-inputs`, at `CRB_INPUTS_REVISION` (default: the pinned upload `21cae17423b0`).
 
 - The set has 60 evaluated files (4 datasets × 3 error types × n_replace 1..5), with 9,778
   corrupted programs. The 9,257 that fail their tests are refined and scored.

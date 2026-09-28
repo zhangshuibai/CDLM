@@ -67,7 +67,7 @@ depending on machine load; `n_timeout_total` in the summary counts such failures
 By default the paper's input set (60 files, `<tag>_<error>_2_wrong_<n>_evaluated.jsonl`
 with tag `Open-Dcoder-0.5B-mixture-mdm-step2000`, tokenised with the Open-dCoder tokenizer)
 is downloaded from the Hugging Face dataset `Shuibai12138/crb-paper-inputs`
-(directory `open-dcoder-0.5B/`) at `CRB_INPUTS_REVISION` (default `main`), and checked
+(directory `open-dcoder-0.5B/`) at `CRB_INPUTS_REVISION` (default: the pinned upload `21cae17423b0`), and checked
 against `paper_inputs.md5`. `CRB_INPUTS_DIR=<dir>` uses a local copy instead
 (`<dir>/open-dcoder-0.5B/<dataset>/evaluated/`, `<dir>/buggy_datasets/<dataset>/evaluated/` or
 `<dir>/<dataset>/evaluated/`). `CRB_OFFLINE=1` never contacts the Hub.

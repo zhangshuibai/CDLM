@@ -29,7 +29,7 @@ mkdir -p "${OUT}"
 
 # ---- config shared byte-identically by both arms ---------------------------
 #  seed 42 | lr 3e-4 | wd 0.01 | cosine over a 20000-step horizon with 1%
-#  (=200 step) warmup, so LR at step 2000 is ~98.7% of peak (2.96e-4).
+#  (=200 step) warmup, so LR at step 2000 is 2.94e-4 (~98.0% of peak).
 #  NOTE: this is *not* the published 0.5B schedule -- there, veomni derived
 #  _train_steps=20,345,053 from train_size=1e12, so lr_warmup_steps=20,345 and
 #  step 2000 was still in linear warmup at 9.83% of peak (2.949e-05). We use the

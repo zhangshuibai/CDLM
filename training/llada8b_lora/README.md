@@ -5,7 +5,11 @@ comparison between absorbing-only masked-diffusion fine-tuning (**MDLM**) and th
 mixture objective (**CDLM**) on `GSAI-ML/LLaDA-8B-Base`. The two arms use the same corpus, steps,
 schedule, seed, batch and LoRA configuration. Only `mixture_prob` and `noise_token_wt` differ.
 
-## Results reproduced
+This experiment is not in the NeurIPS 2026 submission. It is added in the camera-ready version
+(NeurIPS 2026), and its numbers were also reported in the public OpenReview discussion of the
+submission.
+
+## Reported results
 
 Localisation is measured on CRB HumanEval with `n_replace=1` and all three error types (n = 541).
 Confidence is the probability the model assigns to the token currently at each position,
@@ -31,17 +35,26 @@ Early checkpoint (a separate 200-step run with the same configuration, i.e. a pr
 **Raw vs. de-fenced.** Both fine-tuned arms learn markdown code fences from Nemotron-SFT-Code.
 The HumanEval+ buggy bodies end with a spare blank line. With `remove_all` refinement the models
 fill it with "```", which makes the program a syntax error under `--no_postprocess`. `defence.py`
-truncates each completion at the first "```" and applies the same rule to every arm. It leaves
-every base completion unchanged (checked on all 24 base cells). Both numbers are reported above. At T=4
-(`--refined_steps 5`) the de-fenced means are 59.5 / 60.9 / 62.3 (base / MDLM / CDLM) and the raw
-means are 59.5 / 46.0 / 51.8.
+truncates each completion at the first "```", strips trailing whitespace, and applies the same rule
+to every arm. Both numbers are reported above. At T=4 (`--refined_steps 5`) the de-fenced means
+are 59.5 / 60.9 / 62.3 (base / MDLM / CDLM) and the raw means are 59.5 / 46.0 / 51.8.
+
+- **Base.** No base completion contains a fence (0 of 6,368 in the 24 base cells), so for base the
+  rule only strips trailing whitespace. Individual base cells still move slightly between the two
+  evaluations (e.g. HumanEval+ operator 61.6 → 61.2 and literal 82.4 → 83.0 at T=1), within the
+  evaluation noise noted below; the base means are the same.
+- **CDLM at T=4.** De-fencing does not recover CDLM's HumanEval+ cells at T=4 (35.3–38.8), although
+  the docstring of `defence.py` says the substring rule does; the recorded outputs match the
+  current rule.
+- **Printed count.** `defence: N/M completions truncated` also counts completions whose only change
+  is a stripped trailing newline, so it does not measure how many fences were removed.
 
 ## Files
 
 | file | purpose |
 |---|---|
 | `train_llada_mixture.py` | Standalone trainer: HF `AutoModel` + `peft` LoRA + torchrun DDP. The corruption process is `forward_process` (L111) and the loss is `compute_loss` (L170). |
-| `run_train.sh` | Launches one arm with the paper's hyperparameters. |
+| `run_train.sh` | Launches one arm with the hyperparameters of the reported runs. |
 | `refine_code_lora.py` | Wraps the repo-level `refine_code.py`. It loads a LoRA adapter, merges it into the bf16 base and then runs the unchanged CRB refinement. |
 | `run_crb_cell.sh` | Runs one CRB cell (arm × dataset × error type × n_replace × steps) on one GPU: refinement, then raw and de-fenced evaluation with the repo-level `evaluate_code.py`. |
 | `run_crb_parallel.sh` | Runs the full 72-cell sweep (3 arms × 4 datasets × 3 error types × {2, 5} steps) with one queue per GPU. |
@@ -53,8 +66,8 @@ means are 59.5 / 46.0 / 51.8.
 ## Training objective
 
 Both arms train on the LLaDA absorbing loss. For each sequence the trainer draws
-`t ~ U(0,1)` and masks every token independently with probability `t`. The loss is
-`L_absorb = Σ_masked CE / t / (B·L)`. LLaDA is bidirectional, so no logits are shifted.
+`t ~ U(0,1)` and masks every token independently with probability `p = (1 − 1e-3)·t + 1e-3`. The
+loss is `L_absorb = Σ_masked CE / p / (B·L)`. LLaDA is bidirectional, so no logits are shifted.
 
 CDLM also corrupts visible tokens. After masking, each remaining visible token is replaced with
 probability `mixture_prob` by a uniformly sampled token that is neither the mask token nor the
@@ -67,7 +80,7 @@ masking pattern is identical in both arms.
 
 | knob | value |
 |---|---|
-| base model | `GSAI-ML/LLaDA-8B-Base`, revision `0f2787f2d87eac5eed8a087d5ecd24277e6255b2` (8.18 B params, mask id 126336) |
+| base model | `GSAI-ML/LLaDA-8B-Base`, revision `0f2787f2d87eac5eed8a087d5ecd24277e6255b2` (8,015,581,184 params, 8.18 B with the LoRA parameters; mask id 126336) |
 | corpus | Nemotron-SFT-Code: `nvidia/Nemotron-Pretraining-SFT-v1`, config `Nemotron-SFT-Code`, 78 parquet shards |
 | packing | tokenize `text`, append EOS, split into ≤ 4096-token chunks (chunks < 16 tokens dropped). Shards are shuffled with seed 42 and assigned round-robin to ranks. |
 | max_seq_len | 4096 |
@@ -85,6 +98,10 @@ masking pattern is identical in both arms.
 
 `run_train.sh` does not pass `--mixture_prob` or `--noise_token_wt`. The trainer fills them in
 from `--arm`. You can pass them explicitly to `train_llada_mixture.py` to run other values.
+
+The base-model revision is documented but not enforced: the trainer and the evaluation scripts load
+`GSAI-ML/LLaDA-8B-Base` without a revision, i.e. the Hub's current `main`. The trainer's
+`--model_path` also accepts a local snapshot of that revision.
 
 This LR schedule is the 8B experiment's own. It does not reproduce the 0.5B runs, which were
 still in linear warmup at step 2000. The schedule is identical in both 8B arms.
@@ -112,10 +129,11 @@ python training/data_prep/prepare_nemotron_sft_code.py
 ```
 
 This places the 78 shards in `data/Nemotron-SFT-Code` under the repo root, which is also this
-launcher's default `DATA_DIR`. The G6 runs read a copy downloaded at Hub revision
-`3f1a5b884d0b890f02ead979ce698dc95debd953`; the script pins `af7991c59eeb5e53a98bb6b1ee7a96cc3754eb39`,
-and the Hub lists the same 78 files (`part_000000.parquet` to `part_000077.parquet`) with identical
-names and sizes at both revisions. Point `DATA_DIR` elsewhere if you stored the data somewhere else. The trainer uses every
+launcher's default `DATA_DIR`. The runs reported here read a copy downloaded at Hub revision
+`3f1a5b884d0b890f02ead979ce698dc95debd953`; the script pins
+`af7991c59eeb5e53a98bb6b1ee7a96cc3754eb39`, and the Hub lists the same 78 files
+(`part_000000.parquet` to `part_000077.parquet`) with identical names and sizes at both revisions.
+Point `DATA_DIR` elsewhere if you stored the data somewhere else. The trainer uses every
 `*.parquet` file in that directory, so the data order depends on the shard file names and on the
 number of ranks.
 
@@ -138,7 +156,7 @@ bash training/llada8b_lora/run_train.sh cdlm 200 gate
 These environment variables override the defaults: `CUDA_VISIBLE_DEVICES` (default `0,1,2,3`),
 `NPROC` (4), `MASTER_PORT` (29642), `DATA_DIR`, `OUTPUT_DIR` and `TORCHRUN`. The global batch must
 equal micro × accum × world, so `NPROC` must divide 12. Keep `NPROC=4` to get the same data order
-and per-rank RNG streams as the paper. To change the model path or any other flag, call the
+and per-rank RNG streams as the reported runs. To change the model path or any other flag, call the
 trainer directly:
 
 ```bash
@@ -149,6 +167,12 @@ torchrun --nproc_per_node=4 training/llada8b_lora/train_llada_mixture.py --arm c
     --max_seq_len 4096 --seed 42 --lora_r 64 --lora_alpha 128 --lora_dropout 0.05 \
     --clean_token_wt 0.0 --save_steps 0 --log_every 20
 ```
+
+The log line is written at step 1 and every `--log_every` steps (20 in `run_train.sh`). `loss` is
+the step loss (mean over the 3 micro-batches) averaged over ranks. `mdm` and `noise` are rank 0's
+values only. `gnorm` is the gradient norm before clipping. `lr` is read after `scheduler.step()`,
+so it is the rate the next step will use. `train_log.json` stores `step`, `loss`, `lr`, `mdm` and
+`noise` the same way.
 
 ## Evaluation on CRB
 
@@ -174,11 +198,24 @@ python evaluate_code.py --results_file buggy_datasets/<ds>/LLaDA-8B-Base_<err>_2
     --dataset <ds> --map_prompt2completion --no_postprocess
 ```
 
-With the default seed 42, this regenerates the `operator` files byte-for-byte. The `var` and
-`literal` files cannot be regenerated exactly. Their replacement candidates come from a Python
-`set` of strings (`codecorrection/generate.py`, `all_elements_text`), so the result depends on
-`PYTHONHASHSEED` and changes from run to run. To reproduce the reported numbers exactly, use the
-released CRB files rather than regenerating them.
+**The exact 24 input files of this experiment (the 12 raw files and their 12 `*_evaluated.jsonl`)
+are not yet public. They will be published separately.** Until then:
+
+- **operator.** The commands above (default seed 42) regenerate the four raw files byte-for-byte
+  (md5 checked for all four datasets). The `*_evaluated.jsonl` files made from them were not
+  compared byte-for-byte.
+- **var and literal.** These cannot be regenerated. They were generated when
+  `codecorrection/generate.py` still iterated a Python `set` of strings (`all_elements_text`), so
+  the replacements depended on the unrecorded `PYTHONHASHSEED` of those runs. The script now
+  iterates in sorted order and gives the same files for a given `--seed` on every run, but those
+  files differ from the ones used here. The var and literal Pass@1 cells, and the localisation
+  numbers, which pool all three error types, are therefore not exactly reproducible from public
+  artifacts yet.
+- **Hub CRB data.** The `LLaDA_8B_Base` split of
+  [`Shuibai12138/crb-datasets`](https://huggingface.co/datasets/Shuibai12138/crb-datasets) is not
+  this input set. For HumanEval operator with `n_replace=1` it has 944 rows against the 250 used
+  here, only 13 of those 250 buggy bodies appear in it, and it uses a different schema that nothing
+  in this repository converts.
 
 ### Localisation (confidence gap, Top-K hit rate)
 
@@ -191,7 +228,7 @@ This evaluates base, MDLM and CDLM on HumanEval with `n_replace=1` and all three
 writes `conf_{base,mdlm,cdlm}.json` with per-file and pooled `gather_gap` and `gather_hit@K`.
 Any extra arguments are passed on to `eval_confidence.py`, for example
 `--datasets human-eval mbpp` or `--n_replace 1 3`. The `max_*` fields use the
-max-over-vocabulary confidence instead, which gives a different ranking (see the paper's appendix).
+max-over-vocabulary confidence instead, which gives a different ranking.
 
 ### Pass@1 under iterative refinement
 
@@ -206,6 +243,15 @@ The sweep reads its adapters from `MDLM_ADAPTER` and `CDLM_ADAPTER`, which defau
 outputs go to `g6v_{base,mdlm,cdlm}_results/` and per-step histories go to
 `g6v_*_history/`, both under the repo root. The histories can be large; you can delete them once
 Pass@1 has been computed.
+
+Finished cells are reused. Each cell directory records the adapter it was produced with in
+`adapter.txt` (`NONE`, a sha256 prefix of the adapter config and weights, or `hub:<id>`). If you
+re-run a label with a different or retrained adapter, the cell stops with
+`!!! STALE ... remove that directory or use another label`; delete `g6v_<label>_results` (or that
+cell's directory) or use a new label. A relative adapter path is taken relative to the directory
+you run the script from. A failed refinement or evaluation fails the cell, and
+`run_crb_parallel.sh` then prints `FAILED cell ...` and exits non-zero. A missing input file is
+reported as `SKIP` and does not fail the sweep.
 
 Run a single cell:
 

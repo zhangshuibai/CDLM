@@ -4,16 +4,19 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 FIG_DIR="$(_abspath "${FIG_DIR:-${RESULTS_ROOT}/figures}")"
-STEM="${CHECKPOINT%.pt}"
-MDLM="checkpoints_absorbing/${STEM}"
-CDLM="uniform_absorbing_mixture_checkpoints/prob_${MIXTURE_PROB}/${STEM}"
+MDLM="checkpoints_absorbing/${CHECKPOINT_STEM}"
+CDLM="uniform_absorbing_mixture_checkpoints/prob_${MIXTURE_PROB}/${CHECKPOINT_STEM}"
 REFINEMENT="${RESULTS_ROOT}/refinement"
 COMPLETION="${RESULTS_ROOT}/completion"
 
-for d in "${REFINEMENT}/${MDLM}" "${REFINEMENT}/${CDLM}" \
-         "${COMPLETION}/${MDLM}" "${COMPLETION}/${CDLM}"; do
-    if [ ! -d "${d}" ]; then
-        echo "Results not found: ${d} (run scripts/eval_refinement.sh and scripts/eval_completion.sh)" >&2
+for f in "${REFINEMENT}/${MDLM}/uniform_noise_only_results.csv" \
+         "${REFINEMENT}/${CDLM}/uniform_noise_only_results.csv" \
+         "${REFINEMENT}/${MDLM}/uniform_noise_diffusion_results.csv" \
+         "${REFINEMENT}/${CDLM}/uniform_noise_diffusion_results.csv" \
+         "${COMPLETION}/${MDLM}/absorbing_results.csv" \
+         "${COMPLETION}/${CDLM}/absorbing_results.csv"; do
+    if [ ! -f "${f}" ]; then
+        echo "Results not found: ${f} (run scripts/eval_refinement.sh and scripts/eval_completion.sh)" >&2
         exit 1
     fi
 done

@@ -12,6 +12,9 @@
 # Every cell is independent, so this is scheduling-only: identical numerics to the
 # previous `torchrun --nproc_per_node=4` launch (batch_size 1 either way), just one
 # cell per GPU instead of one cell spread over four.
+#
+# Finished cells are reused (see run_crb_cell.sh); a cell whose outputs were produced with a
+# different adapter fails instead. The script exits non-zero if any cell failed.
 set -uo pipefail
 
 NR=${1:-1}
@@ -41,17 +44,29 @@ done
 echo "total cells: ${#CELLS[@]}  (n_replace=${NR}), ${#GPUS[@]}-way parallel over GPUs ${GPUS[*]}"
 
 # Round-robin: slot i takes cells i, i+G, i+2G, ... so each GPU runs a serial queue.
+PIDS=()
 for i in "${!GPUS[@]}"; do
     (
         GPU=${GPUS[$i]}
+        FAILS=0
         for ((j=i; j<${#CELLS[@]}; j+=${#GPUS[@]})); do
             IFS='|' read -r LABEL ADAPTER DS ET STEPS <<< "${CELLS[$j]}"
-            bash "${SCRIPT_DIR}/run_crb_cell.sh" "${GPU}" "${LABEL}" "${ADAPTER}" \
-                 "${DS}" "${ET}" "${NR}" "${STEPS}" \
-                 >> "${LOG_DIR}/crb_gpu${GPU}.log" 2>&1
+            if ! bash "${SCRIPT_DIR}/run_crb_cell.sh" "${GPU}" "${LABEL}" "${ADAPTER}" \
+                    "${DS}" "${ET}" "${NR}" "${STEPS}" \
+                    >> "${LOG_DIR}/crb_gpu${GPU}.log" 2>&1; then
+                FAILS=$((FAILS + 1))
+                echo "FAILED cell ${LABEL}/${DS}/${ET}/steps${STEPS} (see ${LOG_DIR}/crb_gpu${GPU}.log)"
+            fi
         done
-        echo "queue for GPU ${GPU} finished"
+        echo "queue for GPU ${GPU} finished (${FAILS} failed)"
+        [ "${FAILS}" -eq 0 ]
     ) &
+    PIDS+=($!)
 done
-wait
+STATUS=0
+for p in "${PIDS[@]}"; do wait "${p}" || STATUS=1; done
+if [ "${STATUS}" -ne 0 ]; then
+    echo "=== SOME CELLS FAILED (n_replace=${NR}); see ${LOG_DIR}/crb_gpu*.log ==="
+    exit 1
+fi
 echo "=== ALL CELLS COMPLETE (n_replace=${NR}) ==="

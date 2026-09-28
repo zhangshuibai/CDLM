@@ -2,8 +2,9 @@
 # Train the Sudoku DiT from random initialisation (paper Appendix F).
 #   bash scripts/train.sh absorbing   # MDLM: absorbing (mask-only) noise
 #   bash scripts/train.sh mixture     # CDLM: absorbing + uniform replacement, MIXTURE_PROB (default 0.1)
-# Extra arguments are forwarded to train.py. Hyperparameters are those of the
-# original run_experiment.sh.
+# Extra arguments are appended to the train.py command line and override the
+# values below (e.g. --num-steps 2000). Hyperparameters are those of the original
+# run_experiment.sh.
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 

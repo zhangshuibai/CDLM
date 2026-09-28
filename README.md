@@ -71,6 +71,17 @@ Additionally, install the core dependencies required by this repository:
 pip install torch transformers datasets evaluate autopep8 tqdm
 ```
 
+Open-dCoder models are loaded with the `veomni` package from the bundled `Open-dLLM/` directory.
+From the repository root:
+
+```bash
+export PYTHONPATH="$PWD/Open-dLLM"
+python -c "import veomni; print(veomni.__file__)"   # should print <repo>/Open-dLLM/veomni/__init__.py
+```
+
+Do not put `training/` on `PYTHONPATH` here; its `veomni` is the training copy (see
+[training/README.md](training/README.md#environment)).
+
 ### Usage
 
 The example scripts run a complete pipeline: **code generation → corruption with controlled errors → iterative refinement → evaluation**.
@@ -207,14 +218,24 @@ for 2000 steps with α = 0.1 and `noise_token_wt` = 0.1. The MDLM baseline uses 
 α = 0 and `noise_token_wt` = 0.
 
 ```bash
-# after preparing the data with training/data_prep/prepare_nemotron_sft_code.py (4 GPUs; ARM=mdlm for the baseline)
-ARM=cdlm bash training/scripts/train_0.5b.sh
+# accept the dataset terms of nvidia/Nemotron-Pretraining-SFT-v1 on the Hub first
+huggingface-cli login
+python training/data_prep/prepare_nemotron_sft_code.py --paper_order   # about 59 GB; records the paper's shard order
+ARM=cdlm bash training/scripts/train_0.5b.sh                           # 4 GPUs; ARM=mdlm for the baseline
 ```
 
-- [training/README.md](training/README.md): the exact objective, environment, data, a map from every
-  script to the paper experiment it reproduces, checkpoint conversion, evaluation and the released
-  checkpoints.
-- [training/llada8b_lora/README.md](training/llada8b_lora/README.md): LoRA transfer to LLaDA-8B-Base.
+`--paper_order` writes `data/train_path_paper_order.txt`, and the launcher then streams the shards in
+the order of the paper's runs (it prints a `Shard order:` line; `PAPER_ORDER=0` opts out). Without
+that file, the shards are read in the filesystem's listing order, which in general is not the
+paper's. The training data is gated; `training/scripts/train_0.5b_opencodeinstruct.sh` trains on the
+public OpenCodeInstruct instead, but that is not the paper's data and its results are not the
+paper's results (see [training/README.md](training/README.md#opencodeinstruct-variant)).
+
+- [training/README.md](training/README.md): the exact objective (and how it differs from Eq. (1) as
+  printed), environment, data, a map from every script to the paper experiment it reproduces,
+  provenance of the released checkpoints, checkpoint conversion and evaluation.
+- [training/llada8b_lora/README.md](training/llada8b_lora/README.md): LoRA transfer to LLaDA-8B-Base
+  (added in the camera-ready version, NeurIPS 2026).
 - [sudoku/README.md](sudoku/README.md): the from-scratch Sudoku comparison (Appendix F).
 
 ## Project Structure
@@ -227,22 +248,26 @@ CDLM/
 │   ├── test_human-eval_llada.sh
 │   ├── test_human-eval_dream.sh
 │   └── test_human-eval_open-dllm.sh
-├── figures/             # Paper figures and diagrams
-│   └── CRB_pipeline.pdf
+├── figures/             # Figures used in this README
+│   ├── CRB_pipeline.png
+│   └── mdlm_train.png
+├── Open-dLLM/           # Bundled Open-dLLM (Apache-2.0); provides veomni for Open-dCoder evaluation
+├── project_page/        # Project web page
 ├── training/            # Corrective training (CDLM / MDLM)
 │   ├── scripts/         # Launchers for the 0.5B experiments
 │   ├── tools/           # Checkpoint conversion to HuggingFace format
 │   ├── data_prep/       # Training-data download and verification
 │   ├── llada8b_lora/    # LLaDA-8B-Base LoRA transfer
 │   ├── tasks/           # Training entry point (train_torch.py)
-│   ├── configs/         # Training config
+│   ├── configs/         # Training config and the resolved configs of the released runs
 │   └── veomni/          # Training framework (VeOmni / Open-dLLM, Apache-2.0)
 ├── sudoku/              # From-scratch Sudoku experiment (Appendix F)
 ├── evaluate_code.py     # Code evaluation script
 ├── llada_sample.py      # Core sampling and remasking logic
 ├── refine_code.py       # Code refinement pipeline
 ├── sanitize.py          # Code sanitization utilities
-└── utils.py             # Utility functions
+├── utils.py             # Utility functions
+└── LICENSE              # MIT
 ```
 
 ## Citation
@@ -264,6 +289,10 @@ If you find this work useful, please cite:
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+`Open-dLLM/` and the framework code under `training/` (see [training/NOTICE](training/NOTICE)) are
+under the Apache License 2.0. `sudoku/puzzle_generator.py` and `sudoku/advanced_sudoku_generator.py`
+are third-party code by Ali Alp (MIT, per the upstream README); see
+[sudoku/THIRD_PARTY_NOTICES.md](sudoku/THIRD_PARTY_NOTICES.md).
 
 ## Contact
 

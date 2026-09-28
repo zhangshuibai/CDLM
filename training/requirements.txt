@@ -1,6 +1,15 @@
-# Training dependencies for the Open-dCoder-0.5B CDLM / MDLM runs.
-# Versions are the ones installed in the environment that produced the paper's
-# checkpoints (Python 3.11.13, Linux x86_64, CUDA 12.4 driver stack).
+# Training dependencies for the Open-dCoder-0.5B CDLM / MDLM runs
+# (Python 3.11.13, Linux x86_64, torch built for CUDA 12.4, A100 GPUs).
+#
+# Versions. The pins below are the environment of the multi-seed runs (seeds 1234 and 2025)
+# and the clean-token-weight run, which used exactly the veomni/ and tasks/ code in this
+# directory. The headline seed-42 runs that produced the released CDLM-0.5B and MDLM-0.5B
+# checkpoints used the same version of every package listed here except
+#   transformers==4.54.1  tokenizers==0.21.4  datasets==3.6.0
+# and a slightly older copy of the code (it differs in logging and timeouts only; see NOTICE).
+# With the pins below, the headline MDLM run's data stream was reproduced for 2001 steps, with
+# losses bitwise equal at steps 1, 2 and 2001. To use the headline runs' versions instead,
+# install those three pins after this file (not re-run with this code snapshot).
 #
 # Install order:
 #   pip install torch==2.5.0 --index-url https://download.pytorch.org/whl/cu124
@@ -17,21 +26,24 @@
 
 torch==2.5.0
 triton==3.1.0
+# triton 3.1.0 imports setuptools at import time (triton/runtime/build.py) but does not
+# declare it; torch 2.5.0 declares it only for Python >= 3.12.
+setuptools==78.1.1
 flash-attn==2.7.4.post1
 # Required: the MDM / mixture losses in modeling_qwen2.py use
 # LigerFusedLinearCrossEntropyLoss and raise if liger-kernel is missing.
 liger-kernel==0.5.8
 
-# 4.57.0 was later yanked on PyPI (packaging issue); the exact pin still
-# installs, with a warning, and is the version the paper runs used.
+# 4.57.0 was later yanked on PyPI ("Error in the setup causing installation issues");
+# the exact pin still installs, with a warning.
 transformers==4.57.0
 tokenizers==0.22.2
 safetensors==0.6.2
 huggingface-hub==0.34.4
 accelerate==1.11.0
 
-# The streaming shuffle / shard split of the iterable dataset depends on the
-# datasets version; keep it pinned to reproduce the paper's data order.
+# datasets 3.6.0 (headline runs) and 4.2.0 give the same streaming shuffle / shard split
+# for this data (see the 2001-step check above); keep the pin so that stays true.
 datasets==4.2.0
 fsspec==2024.6.1
 pyarrow==22.0.0
@@ -39,6 +51,10 @@ torchdata==0.11.0
 
 numpy==2.3.2
 packaging==25.0
+# Imported whenever veomni.models is imported, i.e. by tasks/train_torch.py and
+# tools/convert_dcp_to_hf.py (veomni/models/seed_omni/decoder/movqgan/processing_movqgan.py,
+# and transformers.image_utils.PILImageResampling in veomni/models/transformers/movqgan/).
+pillow==11.3.0
 psutil==7.0.0
 PyYAML==6.0.2
 tqdm==4.67.1

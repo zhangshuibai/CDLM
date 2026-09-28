@@ -1,0 +1,118 @@
+# Fully resolved configuration of the run that produced CDLM-0.5B
+# (Hugging Face Shuibai12138/CDLM-0.5B): step 2000 of run
+# Open-Dcoder-0.5B-continue-mixture-mdm-20251115-115315.
+# This is the veomni_cli.yaml the trainer saved for that run (every default filled in),
+# provided for reference only: it cannot be passed back to tasks/train_torch.py, whose parser
+# reads null and [] as the strings 'null' and '[]'. Launch with
+#   ARM=cdlm SEED=42 NPROC=4 bash training/scripts/train_0.5b.sh
+# which resolves to exactly this configuration except for the checkpoint and evaluation
+# flags below (see training/README.md). They only control checkpointing and the in-training
+# HumanEval hook; the data stream and the corruption noise are unaffected (training/NOTICE).
+#   field                       this file -> train_0.5b.sh
+#   save_steps                  10000 -> STOP_STEP (2000)
+#   save_time_interval_minutes  170   -> 0
+#   eval_every                  1000  -> 0
+#   eval_before_train           true  -> false
+# ${DATA_DIR}, ${OUTPUT_DIR} and ${RUN_NAME} are placeholders with the same meaning as in
+# train_0.5b.sh; the trainer does not expand them. The recorded W&B entity was removed.
+# train_path was one directory, read in its (filesystem-dependent) os.listdir order; how to
+# reproduce that shard order is described in training/data_prep/README.md ("Shard order").
+# Not stored in this file: world size 4 (4 GPUs, gradient accumulation 1); code at commit
+# 409879f with transformers 4.54.1, tokenizers 0.21.4, datasets 3.6.0 (training/NOTICE).
+data:
+  chat_template: default
+  data_name: null
+  data_tag: default
+  data_type: plaintext
+  dataloader_type: native
+  datasets_type: iterable
+  drop_last: true
+  image_keys: images
+  max_seq_len: 4096
+  num_workers: 2
+  pin_memory: true
+  prefetch_factor: 2
+  text_keys: text
+  train_path: ${DATA_DIR}  # placeholder
+  train_size: 1000000000000
+model:
+  attn_implementation: flash_attention_2
+  basic_modules: []
+  config_path: fredzzp/open-dcoder-0.5B
+  decoders: {}
+  encode_target: false
+  encoders: {}
+  input_encoder: encoder
+  model_path: fredzzp/open-dcoder-0.5B
+  moe_implementation: null
+  output_encoder: decoder
+  tokenizer_path: fredzzp/open-dcoder-0.5B
+train:
+  activation_gpu_limit: 0.0
+  auto_resume: true
+  bsz_warmup_init_mbtoken: 200
+  bsz_warmup_ratio: 0.0
+  ckpt_manager: dcp
+  clean_token_wt: 0.0
+  context_parallel_size: 1
+  data_parallel_mode: ddp
+  dyn_bsz: true
+  dyn_bsz_buffer_size: 100
+  dyn_bsz_margin: 0
+  empty_cache_steps: 1000
+  enable_activation_offload: false
+  enable_forward_prefetch: true
+  enable_fsdp_offload: false
+  enable_full_determinism: false
+  enable_full_shard: false
+  enable_gradient_checkpointing: false
+  enable_manual_eager: false
+  enable_masking: true
+  enable_mixed_precision: false
+  enable_profiling: false
+  enable_reentrant: false
+  eval_batch_size: 10
+  eval_before_train: true
+  eval_every: 1000
+  expert_parallel_size: 1
+  freeze_layers: lm_head,embed_tokens
+  global_batch_size: 12
+  init_device: cuda
+  load_checkpoint_path: ''
+  lr: 0.0003
+  lr_decay_ratio: 1.0
+  lr_decay_style: cosine
+  lr_min: 3.0e-06
+  lr_start: 0.0
+  lr_warmup_ratio: 0.001
+  max_grad_norm: 1.0
+  max_steps: null
+  micro_batch_size: 3
+  mixture_prob: 0.1
+  noise_token_wt: 0.1
+  num_train_epochs: 1
+  optimizer: adamw
+  output_dir: ${OUTPUT_DIR}/${RUN_NAME}  # placeholder
+  pipeline_parallel_size: 1
+  profile_end_step: 2
+  profile_profile_memory: true
+  profile_record_shapes: true
+  profile_start_step: 1
+  profile_trace_dir: ./trace
+  profile_with_stack: true
+  repr_align_wt: 0.0
+  rmpad: false
+  rmpad_with_pos_ids: true
+  save_epochs: 1
+  save_hf_weights: true
+  save_steps: 10000
+  save_time_interval_minutes: 170
+  seed: 42
+  tensor_parallel_size: 1
+  ulysses_parallel_size: 1
+  use_doptim: false
+  use_wandb: true
+  wandb_entity: null  # recorded value removed
+  wandb_name: ${RUN_NAME}  # placeholder
+  wandb_project: Qwen2.5-Coder-0.5B
+  weight_decay: 0.01

@@ -7,6 +7,7 @@
 # Inputs of sudoku_uniform_noise_comparison.pdf and
 # sudoku_uniform_noise_diffusion_*_comparison.pdf. The original run also included
 # MODES="absorbing" (steps 1-4), which no figure uses.
+# 3 + 288 = 291 evaluation processes per checkpoint; exits non-zero if any fails.
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 

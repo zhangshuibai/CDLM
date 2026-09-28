@@ -68,9 +68,60 @@ Upstream change not included:
       missing `from functools import partial` import). The file is kept as it
       was when the paper's checkpoints were trained.
 
+Provenance of the released checkpoints
+
+  CDLM-0.5B (Hugging Face Shuibai12138/CDLM-0.5B, also published as
+  Shuibai12138/Open-Dcoder-0.5B-mixture-mdm-step2000):
+      step 2000 of run Open-Dcoder-0.5B-continue-mixture-mdm-20251115-115315
+  MDLM-0.5B baseline (Shuibai12138/Open-Dcoder-0.5B-baseline-mdm-step2000):
+      step 2000 of run
+      Baseline-Open-Dcoder-0.5B-continue-mixture-mdm-20251115-220242
+
+  Both runs: seed 42, 4 x A100-PCIE-40GB, global batch 12, Python 3.11.13,
+  torch 2.5.0 (CUDA 12.4 build), transformers 4.54.1, tokenizers 0.21.4,
+  datasets 3.6.0, every other package at the version pinned in
+  requirements.txt. Code: the development repository this snapshot was
+  taken from, at commit 409879f. The full resolved configurations are
+  configs/cdlm/headline_resolved.yaml and
+  configs/cdlm/headline_mdlm_resolved.yaml; they differ only in
+  mixture_prob, noise_token_wt and the run names.
+
+  veomni/, tasks/train_torch.py and configs/pretrain/ in this directory are
+  that repository at the later commit 4c13f87, which the multi-seed runs
+  (seeds 1234 and 2025) and the clean-token-weight run used, with
+  transformers 4.57.0, tokenizers 0.22.2 and datasets 4.2.0 (the pins in
+  requirements.txt). From 409879f to 4c13f87 four files change; none of
+  the changes affects the data, the loss or the gradients:
+
+  tasks/train_torch.py
+      The HF export written at an evaluation step goes to
+      hf_ckpt_step_<step> instead of hf_ckpt (output path). NCCL_TIMEOUT
+      defaults to 3600 before the process group is created (timeout).
+  veomni/distributed/parallel_state.py
+      Comments and an unused local variable.
+  veomni/distributed/sequence_parallel/comm.py
+      45-minute timeout on the sequence- and context-parallel process
+      groups (timeout).
+  veomni/models/transformers/qwen2/modeling_qwen2.py
+      The logged ratio conf_ratio = clean_conf / noise_conf is clamped at
+      10000 instead of 100. It is computed under no_grad and only logged,
+      so the headline runs' logged conf_ratio is capped at 100.
+
+  How this was established. The published weights were loaded into this
+  code, in the requirements.txt environment, and trained with lr = 1e-30
+  (weights effectively frozen) on the headline data stream. For both runs
+  the loss at step 2001, computed from the published weights, is bitwise
+  equal to the loss the original run logged at step 2001 from its own
+  step-2000 weights, and so is every logged loss component (for CDLM apart
+  from the conf_ratio clamp above). This identifies the published
+  weights and shows that data order and corruption noise match for 2001
+  steps. A fresh MDLM run with scripts/train_0.5b.sh also reproduces the
+  recorded losses of steps 1 and 2 bitwise.
+
 Training data
 
 The training corpus (nvidia/Nemotron-Pretraining-SFT-v1, subset
 Nemotron-SFT-Code) is not redistributed here. It is gated on the Hugging Face
-Hub and governed by the NVIDIA Open Data License Agreement; see
+Hub and governed by the NVIDIA Data Agreement for Model Training (linked
+on the Hub page as "NVIDIA Open Data License Agreement"); see
 data_prep/README.md.

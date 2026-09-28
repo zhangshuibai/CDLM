@@ -27,6 +27,9 @@ import hashlib
 import os
 import sys
 
+# Avoid duplicating every downloaded shard in the hf_xet chunk cache.
+os.environ.setdefault("HF_XET_CHUNK_CACHE_SIZE_BYTES", "0")
+
 from huggingface_hub import snapshot_download
 
 

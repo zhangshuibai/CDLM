@@ -31,3 +31,12 @@ env/
 ENV/
 examples_local/
 hf_convert.py
+# Training data and outputs (see training/README.md). Anchored so that
+# training/veomni/data/ (source code) is not matched.
+/data/
+/outputs/
+/training/outputs/
+g6v_*_results/
+g6v_*_history/
+cdlm_results/
+cdlm_history/

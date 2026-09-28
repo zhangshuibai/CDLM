@@ -1,0 +1,18 @@
+# Environment used for the LLaDA-8B LoRA experiment (Python 3.11.13, CUDA 12.4).
+# Install torch from the matching index, e.g.
+#   pip install torch==2.5.0 --index-url https://download.pytorch.org/whl/cu124
+torch==2.5.0
+transformers==4.57.0
+peft==0.17.1
+accelerate==1.11.0
+tokenizers==0.22.2
+safetensors==0.6.2
+huggingface_hub==0.34.4
+numpy==2.3.2
+pyarrow==22.0.0
+# CRB evaluation (repo-level refine_code.py / evaluate_code.py)
+datasets==4.2.0
+evaluate==0.4.5
+tqdm==4.67.1
+# Only needed to regenerate CRB inputs with codecorrection/generate.py
+# autopep8

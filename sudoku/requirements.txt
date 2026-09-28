@@ -1,0 +1,8 @@
+# Python >= 3.10. Tested with Python 3.11, torch 2.5.0, numpy 2.3.2, pandas 2.3.3,
+# matplotlib 3.10.6, wandb 0.23.0, tqdm 4.67.1.
+torch>=2.0
+numpy
+tqdm
+pandas
+matplotlib
+wandb

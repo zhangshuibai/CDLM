@@ -1,0 +1,49 @@
+# Training dependencies for the Open-dCoder-0.5B CDLM / MDLM runs.
+# Versions are the ones installed in the environment that produced the paper's
+# checkpoints (Python 3.11.13, Linux x86_64, CUDA 12.4 driver stack).
+#
+# Install order:
+#   pip install torch==2.5.0 --index-url https://download.pytorch.org/whl/cu124
+#   pip install ninja packaging
+#   pip install flash-attn==2.7.4.post1 --no-build-isolation
+#   pip install -r requirements.txt
+#
+# flash-attn: its setup.py first tries to fetch the matching prebuilt wheel
+# (flash_attn-2.7.4.post1+cu12torch2.5cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
+# from github.com/Dao-AILab/flash-attention/releases). Only if none matches does
+# it compile from source, which needs nvcc >= 11.7, ninja and a lot of RAM
+# (set MAX_JOBS=4 to limit it). It must be installed after torch, without build
+# isolation.
+
+torch==2.5.0
+triton==3.1.0
+flash-attn==2.7.4.post1
+# Required: the MDM / mixture losses in modeling_qwen2.py use
+# LigerFusedLinearCrossEntropyLoss and raise if liger-kernel is missing.
+liger-kernel==0.5.8
+
+# 4.57.0 was later yanked on PyPI (packaging issue); the exact pin still
+# installs, with a warning, and is the version the paper runs used.
+transformers==4.57.0
+tokenizers==0.22.2
+safetensors==0.6.2
+huggingface-hub==0.34.4
+accelerate==1.11.0
+
+# The streaming shuffle / shard split of the iterable dataset depends on the
+# datasets version; keep it pinned to reproduce the paper's data order.
+datasets==4.2.0
+fsspec==2024.6.1
+pyarrow==22.0.0
+torchdata==0.11.0
+
+numpy==2.3.2
+packaging==25.0
+psutil==7.0.0
+PyYAML==6.0.2
+tqdm==4.67.1
+wandb==0.23.0
+
+# Only needed with --train.ckpt_manager=bytecheckpoint (the yaml default);
+# every paper run passes --train.ckpt_manager=dcp.
+bytecheckpoint==0.0.2

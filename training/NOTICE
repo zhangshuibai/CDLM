@@ -1,0 +1,76 @@
+CDLM corrective-training framework (training/)
+
+This directory is a snapshot of the training framework used to train the
+Open-dCoder-0.5B CDLM (corrective) and MDLM (baseline) checkpoints reported in
+the paper. The repository root is MIT-licensed (../LICENSE). The following
+parts of training/ are derived from Apache-2.0 projects and remain under the
+Apache License, Version 2.0 (full text in training/LICENSE):
+
+  training/veomni/
+  training/tasks/
+  training/configs/
+  training/tools/convert_dcp_to_hf.py
+
+Upstream projects:
+
+  Open-dLLM / Open-dCoder
+    https://github.com/pengzhangzhi/Open-dLLM
+    Fred Z. Peng and contributors.
+    Licensed under the Apache License, Version 2.0.
+    Masked diffusion language model training for code, built on VeOmni.
+
+  VeOmni
+    https://github.com/ByteDance-Seed/VeOmni
+    Copyright 2025 Bytedance Ltd. and/or its affiliates
+    Licensed under the Apache License, Version 2.0.
+
+Several model files are further adapted from Hugging Face Transformers
+(https://github.com/huggingface/transformers, Apache-2.0) and carry the
+copyright notices of the Qwen, DeepSeek, EleutherAI, Meta and LlamaFactory
+authors. All per-file license headers are kept unchanged.
+
+Relation to upstream
+
+training/veomni/, training/tasks/train_torch.py and
+training/configs/pretrain/qwen2_5_coder_500M.yaml are identical to Open-dLLM at
+commit 5b9ba4d (github.com/pengzhangzhi/Open-dLLM) except for the nine files
+below. The complete difference is in PATCH_vs_Open-dLLM-5b9ba4d.diff; applying
+it to Open-dLLM@5b9ba4d reproduces this snapshot exactly.
+
+Modifications by the CDLM authors (absorbing + uniform mixture corruption
+objective and supporting changes):
+
+  veomni/data/data_collator.py
+      DataCollatorWithPositionIDsMixture_Masking: after absorbing (mask)
+      corruption, replaces a fraction mixture_prob of the still-visible tokens
+      with uniformly sampled tokens and keeps supervision on masked and
+      corrupted positions.
+  veomni/data/data_loader.py
+      Selects the mixture collator when mixture_prob > 0.
+  veomni/utils/arguments.py
+      mixture_prob, noise_token_wt, clean_token_wt, eval_before_train,
+      eval_batch_size.
+  veomni/models/transformers/qwen2/modeling_qwen2.py
+  veomni/models/transformers/qwen3/modeling_qwen3.py
+      Weighted cross-entropy on corrupted (noise_token_wt) and clean
+      (clean_token_wt) visible tokens; confidence logging.
+  veomni/distributed/parallel_state.py
+  veomni/distributed/sequence_parallel/comm.py
+      45-minute process-group timeouts.
+  tasks/train_torch.py
+      Wiring of the mixture arguments, evaluation before training,
+      refactored HumanEval hook.
+
+Upstream change not included:
+
+  veomni/models/module_utils.py
+      This snapshot predates an upstream fix (Open-dLLM 243b97e, which adds a
+      missing `from functools import partial` import). The file is kept as it
+      was when the paper's checkpoints were trained.
+
+Training data
+
+The training corpus (nvidia/Nemotron-Pretraining-SFT-v1, subset
+Nemotron-SFT-Code) is not redistributed here. It is gated on the Hugging Face
+Hub and governed by the NVIDIA Open Data License Agreement; see
+data_prep/README.md.

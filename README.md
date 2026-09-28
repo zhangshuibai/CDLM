@@ -46,7 +46,7 @@ This repository provides the implementation and evaluation framework for our cor
 - 🔄 **Iterative self-revision** with diffusion language models
 - 🎯 **Controlled token-level corruption** (operator, identifier, literal substitutions)
 - 📊 **Confidence–correctness analysis** in remasking decisions
-- 🎓 **Corrective training** with supervision on corrupted-but-visible tokens *(Coming soon)*
+- 🎓 **Corrective training** with supervision on corrupted-but-visible tokens (see [training/README.md](training/README.md))
 - 📈 **Controlled corruption** support for HumanEval, HumanEval+, MBPP, and MBPP+
 
 ## Quick Start
@@ -196,6 +196,27 @@ python codecorrection/generate.py \
 - If there are insufficient replaceable elements in the code, the script may fail to generate the specified number of error variants
 - Certain tasks are automatically excluded (e.g., HumanEval/32, MBPP/342) due to structural issues
 
+## Corrective Training
+
+CDLM keeps the standard masked-diffusion corruption and adds one step. After masking, each remaining
+visible token is replaced, with probability `mixture_prob` (α), by a uniformly sampled wrong token.
+The model is then trained to recover the original token at both masked and replaced positions, with
+an extra loss term on replaced positions weighted by `noise_token_wt`. Clean visible tokens receive
+no loss. The CDLM-0.5B checkpoint continues training `fredzzp/open-dcoder-0.5B` on Nemotron-SFT-Code
+for 2000 steps with α = 0.1 and `noise_token_wt` = 0.1. The MDLM baseline uses the same setup with
+α = 0 and `noise_token_wt` = 0.
+
+```bash
+# after preparing the data with training/data_prep/prepare_nemotron_sft_code.py (4 GPUs; ARM=mdlm for the baseline)
+ARM=cdlm bash training/scripts/train_0.5b.sh
+```
+
+- [training/README.md](training/README.md): the exact objective, environment, data, a map from every
+  script to the paper experiment it reproduces, checkpoint conversion, evaluation and the released
+  checkpoints.
+- [training/llada8b_lora/README.md](training/llada8b_lora/README.md): LoRA transfer to LLaDA-8B-Base.
+- [sudoku/README.md](sudoku/README.md): the from-scratch Sudoku comparison (Appendix F).
+
 ## Project Structure
 
 ```
@@ -208,6 +229,15 @@ CDLM/
 │   └── test_human-eval_open-dllm.sh
 ├── figures/             # Paper figures and diagrams
 │   └── CRB_pipeline.pdf
+├── training/            # Corrective training (CDLM / MDLM)
+│   ├── scripts/         # Launchers for the 0.5B experiments
+│   ├── tools/           # Checkpoint conversion to HuggingFace format
+│   ├── data_prep/       # Training-data download and verification
+│   ├── llada8b_lora/    # LLaDA-8B-Base LoRA transfer
+│   ├── tasks/           # Training entry point (train_torch.py)
+│   ├── configs/         # Training config
+│   └── veomni/          # Training framework (VeOmni / Open-dLLM, Apache-2.0)
+├── sudoku/              # From-scratch Sudoku experiment (Appendix F)
 ├── evaluate_code.py     # Code evaluation script
 ├── llada_sample.py      # Core sampling and remasking logic
 ├── refine_code.py       # Code refinement pipeline

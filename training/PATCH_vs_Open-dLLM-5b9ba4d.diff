@@ -1,0 +1,944 @@
+--- a/tasks/train_torch.py
++++ b/tasks/train_torch.py
+@@ -2,7 +2,6 @@
+ import json
+ import os
+ import re
+-import shutil
+ import subprocess
+ import sys
+ import time
+@@ -92,6 +91,76 @@
+         return {}
+ 
+ 
++def run_humaneval_evaluation(
++    args: "TrainingArguments",
++    save_checkpoint_path: str,
++    global_step: int,
++    model_assets: List[Any],
++) -> None:
++    """
++    Convert checkpoint to HF format and run HumanEval evaluation.
++    """
++    if args.train.global_rank != 0:
++        return
++    if not args.train.save_hf_weights:
++        logger.info_rank0("Skipping evaluation because save_hf_weights is disabled.")
++        return
++
++    # Keep a dedicated HF checkpoint per evaluation step to avoid overwriting.
++    hf_subdir = f"hf_ckpt_step_{global_step:07d}"
++    hf_weights_path = os.path.join(save_checkpoint_path, hf_subdir)
++    logger.info_rank0(f"Converting checkpoint from {save_checkpoint_path} to HF format at {hf_weights_path}")
++    model_state_dict = ckpt_to_state_dict(
++        save_checkpoint_path=save_checkpoint_path,
++        output_dir=args.train.output_dir,
++        ckpt_manager=args.train.ckpt_manager,
++    )
++    save_model_weights(hf_weights_path, model_state_dict, model_assets=model_assets)
++    logger.info_rank0(f"Huggingface checkpoint saved at {hf_weights_path} successfully!")
++
++    eval_output_path = os.path.join(save_checkpoint_path, "humaneval")
++    logger.info_rank0(f"Starting HumanEval evaluation for global_step {global_step}")
++
++    cmd = [
++        "python",
++        "eval/eval_completion/eval_single.py",
++        "--model",
++        "custom_coder",
++        "--model_args",
++        (
++            f"pretrained={hf_weights_path},"
++            "max_new_tokens=128,"
++            "steps=128,"
++            "add_bos_token=true,"
++            "temperature=0.6,"
++            "top_p=0.95,"
++            "alg=p2"
++        ),
++        "--tasks",
++        "humaneval",
++        "--num_fewshot",
++        "0",
++        "--batch_size",
++        str(args.train.eval_batch_size),
++        "--output_path",
++        eval_output_path,
++        "--log_samples",
++        "--confirm_run_unsafe_code",
++    ]
++    env = dict(os.environ)
++    env.update({"HF_ALLOW_CODE_EVAL": "1"})
++    try:
++        subprocess.run(cmd, env=env, stdout=sys.stdout, stderr=sys.stderr, check=False)
++    except Exception as exc:
++        logger.error(f"HumanEval evaluation failed: {exc}")
++
++    eval_scores = extract_humaneval_scores(eval_output_path)
++    if eval_scores and args.train.use_wandb:
++        wandb_metrics = {f"eval/humaneval/{k}": v for k, v in eval_scores.items()}
++        wandb.log(wandb_metrics, step=global_step)
++        logger.info_rank0(f"Logged HumanEval scores to wandb: {wandb_metrics}")
++
++
+ def freeze_layers_by_patterns(model, patterns_str, logger):
+     """Freeze model parameters matching specified patterns."""
+     if not patterns_str:
+@@ -137,6 +206,10 @@
+     logger.info_rank0(json.dumps(asdict(args), indent=2))
+     torch.cuda.set_device(f"cuda:{args.train.local_rank}")
+     
++    # Set NCCL timeout environment variable before initializing process group
++    # This ensures all process groups (including DeviceMesh groups) use extended timeout
++    os.environ.setdefault("NCCL_TIMEOUT", "3600")  # 1 hour in seconds
++    
+     # Initialize process group with extended timeout to handle long evaluation periods
+     # Default timeout is 10 minutes, but evaluation can take 15-30 minutes
+     dist.init_process_group(backend="nccl", timeout=timedelta(minutes=45))
+@@ -222,6 +295,8 @@
+             rmpad_with_pos_ids=args.train.rmpad_with_pos_ids,
+             enable_masking=args.train.enable_masking,
+             mask_token_id=tokenizer.mask_token_id,
++            mixture_prob=args.train.mixture_prob,
++            vocab_size=tokenizer.vocab_size,
+             bsz_warmup_ratio=args.train.bsz_warmup_ratio,
+             bsz_warmup_init_mbtoken=args.train.bsz_warmup_init_mbtoken,
+             dyn_bsz_margin=args.train.dyn_bsz_margin,
+@@ -235,7 +310,6 @@
+         raise NotImplementedError(f"Unsupported dataloader type: {args.data.dataloader_type}.")
+ 
+     logger.info_rank0("Prepare model")
+-    time.sleep(args.train.global_rank * 2)
+     model = build_foundation_model(
+         config_path=args.model.config_path,
+         weights_path=args.model.model_path,
+@@ -295,6 +369,7 @@
+         lr_start=args.train.lr_start,
+     )
+ 
++    model_assets: Optional[List[Any]] = None
+     if args.train.global_rank == 0:
+         if args.train.use_wandb:
+             wandb.init(
+@@ -332,6 +407,30 @@
+         empty_cache_steps=args.train.empty_cache_steps,
+     )
+ 
++    if args.train.eval_before_train:
++        helper.empty_cache()
++        pre_eval_checkpoint = os.path.join(args.train.save_checkpoint_path, "eval_before_train")
++        state = {
++            "model": model,
++            "optimizer": optimizer,
++            "extra_state": {
++                "global_step": global_step,
++                "lr_scheduler": lr_scheduler.state_dict(),
++                "train_dataloader": train_dataloader.state_dict(),
++                "environ_meter": environ_meter.state_dict(),
++                "torch_rng_state": torch.get_rng_state(),
++            },
++        }
++        Checkpointer.save(pre_eval_checkpoint, state)
++        dist.barrier()
++        run_humaneval_evaluation(
++            args=args,
++            save_checkpoint_path=pre_eval_checkpoint,
++            global_step=global_step,
++            model_assets=model_assets if model_assets is not None else [],
++        )
++        dist.barrier()
++
+     time_checkpoint_timer = None
+     if time_checkpoint_dir_exists:
+         time_checkpoint_timer = helper.PeriodicTimer(args.train.save_time_interval_minutes * 60)
+@@ -395,8 +494,30 @@
+                 micro_batch = {
+                     k: v.cuda(non_blocking=True) if isinstance(v, torch.Tensor) else v for k, v in micro_batch.items()
+                 }
++                if global_step == 1 and args.train.local_rank == 0:
++                    noise_mask_tensor = micro_batch.get("noise_mask")
++                    if isinstance(noise_mask_tensor, torch.Tensor):
++                        noise_token_count = int(noise_mask_tensor.sum().item())
++                        total_noise_tokens = int(noise_mask_tensor.numel())
++                        mask_token_count = (
++                            int((micro_batch["input_ids"] == tokenizer.mask_token_id).sum().item())
++                            if "input_ids" in micro_batch
++                            else -1
++                        )
++                        logger.info_rank0(
++                            "Mixture debug (step 1) -> "
++                            f"mask_token_count={mask_token_count}, "
++                            f"noise_token_count={noise_token_count}, "
++                            f"noise_tensor_size={total_noise_tokens}"
++                        )
+                 with model_fwd_context:
+-                    outputs = model(**micro_batch, use_cache=False, repr_align_wt=args.train.repr_align_wt)
++                    outputs = model(
++                        **micro_batch, 
++                        use_cache=False, 
++                        repr_align_wt=args.train.repr_align_wt,
++                        noise_token_wt=args.train.noise_token_wt,
++                        clean_token_wt=args.train.clean_token_wt,
++                    )
+                     loss_tensor: "torch.Tensor" = outputs.loss.mean() / len(micro_batches)
+                     loss_components = getattr(outputs, "loss_components", {})
+                     for name, value in loss_components.items():
+@@ -494,63 +615,12 @@
+                 # This ensures all ranks have completed checkpoint before rank 0 starts eval
+                 dist.barrier()
+                 
+-                if args.train.global_rank == 0 and args.train.save_hf_weights:
+-                    hf_weights_path = os.path.join(save_checkpoint_path, "hf_ckpt")
+-                    logger.info(f"Converting checkpoint from {save_checkpoint_path} to HF format")
+-                    model_state_dict = ckpt_to_state_dict(
+-                        save_checkpoint_path=save_checkpoint_path,
+-                        output_dir=args.train.output_dir,
+-                        ckpt_manager=args.train.ckpt_manager,
+-                    )
+-                    save_model_weights(hf_weights_path, model_state_dict, model_assets=model_assets)
+-                    logger.info_rank0(f"Huggingface checkpoint saved at {hf_weights_path} successfully!")
+-                    
+-                    # Run HumanEval evaluation
+-                    eval_output_path = os.path.join(save_checkpoint_path, "humaneval")
+-                    logger.info(f"Starting HumanEval evaluation for global_step {global_step}")
+-                    
+-                    # Extract a clean model name for directory creation (avoid path sanitization)
+-                    # Use just the checkpoint directory name instead of full path
+-                    
+-                    cmd = [
+-                            "python", "eval/eval_completion/eval_single.py",
+-                            "--model", "custom_coder",
+-                            "--model_args", 
+-                            f"pretrained={hf_weights_path},"
+-                            "max_new_tokens=128,"
+-                            "steps=128,"
+-                            "add_bos_token=true,"
+-                            "temperature=0.8,"
+-                            "top_p=0.95,"
+-                            "alg=p2",
+-                            "--tasks", "humaneval",
+-                            "--num_fewshot", "0",
+-                            "--batch_size", "10",
+-                            "--output_path", eval_output_path,
+-                            "--log_samples",
+-                            "--confirm_run_unsafe_code",
+-                    ]
+-                    env = dict(os.environ)
+-                    env.update({"HF_ALLOW_CODE_EVAL": "1"})
+-                    try:
+-                        result = subprocess.run(
+-                            cmd, 
+-                            env=env, 
+-                            stdout=sys.stdout, 
+-                            stderr=sys.stderr
+-                        )
+-                    except Exception as e:
+-                        logger.error(f"HumanEval evaluation failed: {e}")
+-                    
+-                    eval_scores = extract_humaneval_scores(eval_output_path)
+-                    
+-                    if eval_scores and args.train.use_wandb:
+-                        wandb_metrics = {
+-                            f"eval/humaneval/{k}": v 
+-                            for k, v in eval_scores.items()
+-                        }
+-                        wandb.log(wandb_metrics, step=global_step)
+-                        logger.info(f"Logged HumanEval scores to wandb: {wandb_metrics}")
++                run_humaneval_evaluation(
++                    args=args,
++                    save_checkpoint_path=save_checkpoint_path,
++                    global_step=global_step,
++                    model_assets=model_assets if model_assets is not None else [],
++                )
+                 
+                 # Note: No barrier here! Other ranks continue immediately while rank 0 evaluates.
+                 # This prevents timeout when evaluation takes longer than NCCL timeout.
+--- a/veomni/data/data_collator.py
++++ b/veomni/data/data_collator.py
+@@ -24,10 +24,14 @@
+ from torch.utils.data._utils.collate import default_collate
+ 
+ from ..distributed.parallel_state import get_parallel_state
++from ..utils import logging
+ from ..utils.seqlen_pos_transform_utils import len2culen, pos2culen
+ from .constants import IGNORE_INDEX
+ 
+ 
++logger = logging.get_logger(__name__)
++
++
+ @dataclass
+ class DataCollator(ABC):
+     """
+@@ -211,6 +215,198 @@
+             cu_seqlens = pos2culen(batch["position_ids"])
+             batch["casual_labels"][:, cu_seqlens[1:-1]] = IGNORE_INDEX
+             batch["labels"][batch["input_ids"] != self.mask_token_id] = IGNORE_INDEX
++        
++        return batch
++
++
++@dataclass
++class DataCollatorWithPositionIDsMixture_Masking(DataCollator):
++    """
++    Enhanced data collator with masking + mixture noise for robust MDM training.
++    
++    Generates:
++    - input_ids: sequence with masked tokens and noise tokens
++    - casual_input_ids: original unmasked sequence for teacher model
++    - mask_ratio: masking ratio
++    - noise_mask: positions where noise was applied (for loss computation)
++    """
++    def __init__(self, mask_token_id: int, mixture_prob: float = 0.1, vocab_size: int = 151936):
++        self.mask_token_id = mask_token_id
++        self.mixture_prob = mixture_prob
++        self.vocab_size = vocab_size
++
++    def _sample_random_tokens(
++        self,
++        num_samples: int,
++        original_tokens: "torch.Tensor",
++        device: "torch.device",
++        dtype: "torch.dtype",
++    ) -> "torch.Tensor":
++        """
++        Sample random tokens excluding mask_token_id and original_tokens.
++
++        Args:
++            num_samples: Number of tokens to sample
++            original_tokens: Tokens to avoid (same shape as output)
++            device: Device for tensor operations
++            dtype: Data type for output tensor
++
++        Returns:
++            random_tokens: Sampled tokens guaranteed to be different
++            from mask_token_id and original_tokens
++        """
++        # Sample from [0, vocab_size-1) and skip mask_token_id
++        random_tokens = torch.randint(
++            0, self.vocab_size - 1, (num_samples,),
++            device=device, dtype=dtype,
++        )
++        random_tokens += (random_tokens >= self.mask_token_id).to(dtype)
++
++        # Handle collisions with original tokens (rare but possible)
++        same_as_original = (random_tokens == original_tokens)
++        max_retries = 5
++
++        for _ in range(max_retries):
++            if not same_as_original.any():
++                break
++
++            num_resample = int(same_as_original.sum().item())
++            resampled = torch.randint(
++                0, self.vocab_size - 1, (num_resample,),
++                device=device, dtype=dtype,
++            )
++            resampled += (resampled >= self.mask_token_id).to(dtype)
++            random_tokens[same_as_original] = resampled
++            same_as_original = (random_tokens == original_tokens)
++
++        # Final fallback: deterministic offset if retries exhausted
++        if same_as_original.any():
++            num_resample = int(same_as_original.sum().item())
++            offsets = torch.randint(
++                0, self.vocab_size, (num_resample,),
++                device=device, dtype=dtype,
++            )
++            random_tokens[same_as_original] = (
++                (original_tokens[same_as_original] + offsets)
++                % self.vocab_size
++            )
++
++            # Ensure not equal to mask_token_id
++            equals_mask = (random_tokens == self.mask_token_id)
++            if equals_mask.any():
++                random_tokens[equals_mask] = (
++                    (random_tokens[equals_mask] + 1) % self.vocab_size
++                )
++
++        return random_tokens
++
++    def _random_masking_with_mixture(
++        self, input_ids: "torch.Tensor"
++    ) -> tuple:
++        """
++        Apply random masking + mixture noise to non-masked tokens.
++
++        Returns:
++            noisy_input_ids: input_ids with masked and noise tokens
++            mask_ratio: ratio of masked tokens
++            noise_mask: mask indicating noise token positions
++        """
++        # Step 1: Apply random masking
++        mask_ratio = torch.rand(
++            1, device=input_ids.device
++        ).clamp(1/500, 1-1/500)
++        mask_indices = torch.rand_like(input_ids.float()) < mask_ratio
++
++        masked_input_ids = input_ids.clone()
++        masked_input_ids[mask_indices] = self.mask_token_id
++
++        # Step 2: Apply mixture noise to non-masked tokens
++        noise_mask = torch.zeros_like(input_ids, dtype=torch.bool)
++        replace_mask = torch.zeros_like(input_ids, dtype=torch.bool)
++
++        if self.mixture_prob > 0.0:
++            replace_candidates = ~mask_indices
++
++            if replace_candidates.any():
++                rand_values = torch.rand_like(input_ids.float())
++                replace_mask = (
++                    replace_candidates & (rand_values < self.mixture_prob)
++                )
++
++                if replace_mask.any():
++                    num_replace = int(replace_mask.sum().item())
++                    original_tokens = input_ids[replace_mask]
++
++                    # Use helper function to sample random tokens
++                    random_tokens = self._sample_random_tokens(
++                        num_replace,
++                        original_tokens,
++                        input_ids.device,
++                        input_ids.dtype,
++                    )
++
++                    masked_input_ids[replace_mask] = random_tokens
++                    noise_mask = replace_mask.clone()
++
++        return (
++            masked_input_ids,
++            mask_ratio.repeat(input_ids.size(0)),
++            noise_mask
++        )
++
++    def __call__(self, features: Sequence[Dict[str, "torch.Tensor"]]) -> Dict[str, "torch.Tensor"]:
++        batch = {}
++        
++        # Process each input type
++        for input_name in features[0].keys():
++            if input_name in ("input_ids", "attention_mask", "labels", "position_ids"):
++                if input_name == "input_ids":
++                    # Store original input_ids
++                    casual_input_ids = torch.cat(
++                        [feature[input_name] for feature in features], dim=-1
++                    ).unsqueeze(0)
++                    batch["casual_input_ids"] = casual_input_ids
++                    
++                    # Apply masking + mixture noise
++                    masking_results = [
++                        self._random_masking_with_mixture(feature[input_name]) 
++                        for feature in features
++                    ]
++                    batch[input_name] = torch.cat(
++                        [result[0] for result in masking_results], dim=-1
++                    ).unsqueeze(0)
++                    batch["mask_ratio"] = torch.cat(
++                        [result[1] for result in masking_results], dim=-1
++                    ).unsqueeze(0)
++                    noise_mask = torch.cat(
++                        [result[2] for result in masking_results], dim=-1
++                    ).unsqueeze(0)
++                    batch["noise_mask"] = noise_mask
++                else:
++                    batch[input_name] = torch.cat(
++                        [feature[input_name] for feature in features], dim=-1
++                    ).unsqueeze(0)
++            else:
++                batch[input_name] = default_collate([feature[input_name] for feature in features])
++
++        # Generate position_ids if not present
++        if "position_ids" not in batch:
++            batch["position_ids"] = torch.cat(
++                [torch.arange(len(feature["input_ids"])) for feature in features]
++            ).unsqueeze(0)
++
++        # Set labels for loss computation
++        if "labels" in batch:
++            batch["casual_labels"] = batch["labels"].clone()
++            cu_seqlens = pos2culen(batch["position_ids"])
++            batch["casual_labels"][:, cu_seqlens[1:-1]] = IGNORE_INDEX
++            
++            # For student: keep labels for both masked and noise positions
++            # Clean positions will have IGNORE_INDEX
++            is_masked = (batch["input_ids"] == self.mask_token_id)
++            is_noise = batch["noise_mask"]
++            is_clean = ~is_masked & ~is_noise
++            batch["labels"][is_clean] = IGNORE_INDEX
+             
+         return batch
+     
+--- a/veomni/data/data_loader.py
++++ b/veomni/data/data_loader.py
+@@ -28,6 +28,7 @@
+     DataCollatorWithPadding,
+     DataCollatorWithPositionIDs,
+     DataCollatorWithPositionIDsMasking,
++    DataCollatorWithPositionIDsMixture_Masking,
+     MakeMicroBatchCollator,
+     TextSequenceShardCollator,
+     UnpackDataCollator,
+@@ -74,6 +75,8 @@
+     seed: int = 0,
+     enable_masking: bool = False,
+     mask_token_id: Optional[int] = None,
++    mixture_prob: float = 0.0,
++    vocab_size: int = 151936,
+ ) -> "DistributedDataloader":
+     parallel_state = get_parallel_state()
+     token_micro_bsz = micro_batch_size * max_seq_len
+@@ -94,7 +97,17 @@
+         if enable_masking:
+             if mask_token_id is None:
+                 raise ValueError("mask_token_id must be provided when enable_masking is True")
+-            collate_fn = DataCollatorWithPositionIDsMasking(mask_token_id)
++            # Use mixture masking collator if mixture_prob > 0
++            if mixture_prob > 0.0:
++                logger.info_rank0(
++                    "Using mixture masking collator "
++                    f"(mixture_prob={mixture_prob}, vocab_size={vocab_size})"
++                )
++                collate_fn = DataCollatorWithPositionIDsMixture_Masking(
++                    mask_token_id, mixture_prob, vocab_size
++                )
++            else:
++                collate_fn = DataCollatorWithPositionIDsMasking(mask_token_id)
+         else:
+             if rmpad:
+                 collate_fn = DataCollatorWithPacking()
+--- a/veomni/distributed/parallel_state.py
++++ b/veomni/distributed/parallel_state.py
+@@ -126,7 +126,11 @@
+     @property
+     def dp_group(self) -> Optional["ProcessGroup"]:
+         if self.sp_device_mesh is not None:
+-            return self.sp_device_mesh.get_group("dp")
++            group = self.sp_device_mesh.get_group("dp")
++            # Note: DeviceMesh process groups use default 10-minute timeout
++            # We rely on NCCL_TIMEOUT environment variable to extend this
++            # The timeout is set in train_torch.py before init_process_group
++            return group
+ 
+         if self.sp_enabled:
+             from ..distributed.sequence_parallel import get_data_parallel_group
+@@ -351,12 +355,22 @@
+ 
+     device_mesh, sp_device_mesh, usp_device_mesh, ep_device_mesh = None, None, None, None
+     if is_torch_version_greater_than("2.4"):
++        from datetime import timedelta
++        
++        # Set default timeout for DeviceMesh process groups (45 minutes to match train_torch.py)
++        # DeviceMesh internally creates process groups that need extended timeout
++        default_mesh_timeout = timedelta(minutes=45)
++        
+         fsdp_size = dist.get_world_size() // (pp_size * tp_size)
+         device_mesh = init_device_mesh(
+             device_type=device_type,
+             mesh_shape=(pp_size, fsdp_size, tp_size),
+             mesh_dim_names=("pp", "dp", "tp"),
+         )
++        # Note: init_device_mesh doesn't support timeout parameter directly,
++        # but DeviceMesh process groups should inherit from default process group timeout
++        # which is set to 45 minutes in train_torch.py
++        
+         if ulysses_size > 1 or cp_size > 1:
+             sp_device_mesh = init_device_mesh(
+                 device_type=device_type,
+@@ -378,6 +392,10 @@
+                 mesh_dim_names=("pp", "ep_dp", "ep", "tp"),
+             )
+ 
++    # Note: DeviceMesh process groups are created with default timeout
++    # We rely on NCCL_TIMEOUT environment variable being set before init_process_group
++    # The timeout should be set in train_torch.py before calling dist.init_process_group()
++    
+     _PARALLEL_STATE = ParallelState(
+         dp_size=dp_size,
+         tp_size=tp_size,
+--- a/veomni/distributed/sequence_parallel/comm.py
++++ b/veomni/distributed/sequence_parallel/comm.py
+@@ -14,6 +14,7 @@
+ 
+ 
+ from contextlib import nullcontext
++from datetime import timedelta
+ from typing import Any, Optional
+ 
+ import torch.distributed as dist
+@@ -247,6 +248,9 @@
+ ):
+     """
+     Initialize unified sequence parallel.
++    
++    Note: All process groups created here will use the same timeout as the default process group
++    (45 minutes) to prevent NCCL timeout errors.
+     """
+     global _CONTEXT_PARALLEL_GROUP
+     global _ULYSSES_SEQUENCE_PARALLEL_GROUP
+@@ -264,6 +268,10 @@
+     unified_sp_size = ulysses_size * cp_size
+     assert world_size % unified_sp_size == 0
+     data_parallel_size = world_size // unified_sp_size
++    
++    # Use 45 minutes timeout for all process groups to match train_torch.py
++    # This prevents NCCL timeout errors (default is 10 minutes)
++    default_timeout = timedelta(minutes=45)
+ 
+     if cp_size > 1:
+         assert _CONTEXT_PARALLEL_GROUP is None, "Context parallel group has already been initialized!"
+@@ -284,8 +292,8 @@
+                 start_rank = i * unified_sp_size + j * ulysses_size
+                 end_rank = start_rank + ulysses_size
+                 ulysses_ranks = range(start_rank, end_rank)
+-                ulysses_group = dist.new_group(ulysses_ranks)
+-                ulysses_cpu_group = dist.new_group(ulysses_ranks, backend="gloo")
++                ulysses_group = dist.new_group(ulysses_ranks, timeout=default_timeout)
++                ulysses_cpu_group = dist.new_group(ulysses_ranks, backend="gloo", timeout=default_timeout)
+                 if rank in ulysses_ranks:
+                     set_ulysses_sequence_parallel_group(group=ulysses_group, group_key=ulysses_group_key)
+                     set_ulysses_sequence_parallel_cpu_group(group=ulysses_cpu_group, group_key=ulysses_group_key)
+@@ -294,14 +302,14 @@
+         if cp_size > 1:
+             for j in range(ulysses_size):
+                 cp_global_ranks = range(i * unified_sp_size + j, (i + 1) * unified_sp_size, ulysses_size)
+-                cp_group = dist.new_group(cp_global_ranks)
++                cp_group = dist.new_group(cp_global_ranks, timeout=default_timeout)
+                 if rank in cp_global_ranks:
+                     set_context_parallel_group(cp_group=cp_group)
+ 
+         # build unified sp group
+         unified_sp_ranks = range(i * unified_sp_size, (i + 1) * unified_sp_size)
+-        sp_group = dist.new_group(unified_sp_ranks)
+-        sp_cpu_group = dist.new_group(unified_sp_ranks, backend="gloo")
++        sp_group = dist.new_group(unified_sp_ranks, timeout=default_timeout)
++        sp_cpu_group = dist.new_group(unified_sp_ranks, backend="gloo", timeout=default_timeout)
+         if rank in unified_sp_ranks:
+             set_unified_sequence_parallel_group(group=sp_group)
+             set_unified_sequence_parallel_cpu_group(group=sp_cpu_group)
+@@ -309,7 +317,7 @@
+     if sep_dp:
+         for j in range(unified_sp_size):
+             dp_ranks = range(j, world_size, unified_sp_size)
+-            dp_group = dist.new_group(dp_ranks)
++            dp_group = dist.new_group(dp_ranks, timeout=default_timeout)
+             if rank in dp_ranks:
+                 set_data_parallel_group(dp_group)
+ 
+--- a/veomni/models/module_utils.py
++++ b/veomni/models/module_utils.py
+@@ -19,7 +19,6 @@
+ from contextlib import contextmanager
+ from dataclasses import dataclass
+ from typing import TYPE_CHECKING, Any, Callable, Dict, Generator, List, Literal, Optional, Sequence, Tuple, Union
+-from functools import partial
+ 
+ import torch
+ # from hdfs_io import hput
+@@ -425,4 +424,4 @@
+     def __call__(self, *args, **kwargs):
+         if self.gradient_checkpointing and self.training:
+             return self._gradient_checkpointing_func(partial(super().__call__, **kwargs), *args)
+-        return super().__call__(*args, **kwargs)
++        return super().__call__(*args, **kwargs)
+\ No newline at end of file
+--- a/veomni/models/transformers/qwen2/modeling_qwen2.py
++++ b/veomni/models/transformers/qwen2/modeling_qwen2.py
+@@ -880,6 +880,7 @@
+         mask_ratio: Optional[torch.FloatTensor] = None,
+         casual_input_ids: Optional[torch.LongTensor] = None,
+         casual_labels: Optional[torch.LongTensor] = None,
++        noise_mask: Optional[torch.Tensor] = None,
+         use_cache: Optional[bool] = None,
+         output_attentions: Optional[bool] = None,
+         output_hidden_states: Optional[bool] = None,
+@@ -888,6 +889,8 @@
+         logits_to_keep: Union[int, torch.Tensor] = 0,
+         is_causal: bool = True,
+         repr_align_wt: Optional[float] = None,
++        noise_token_wt: Optional[float] = None,
++        clean_token_wt: Optional[float] = None,
+         **kwargs: Unpack[KwargsForCausalLM],
+     ) -> Union[Tuple, CausalLMOutputWithPast]:
+         r"""
+@@ -1041,9 +1044,10 @@
+                     if not get_parallel_state().sp_enabled:
+                         # Shift so that tokens < n predict n
+                         hidden_states = hidden_states[..., :-1, :].contiguous()
++                    hidden_states_flat = hidden_states.view(-1, self.config.hidden_size)
+                     token_loss = loss_fct(
+                         self.lm_head.weight,
+-                        hidden_states.view(-1, self.config.hidden_size),
++                        hidden_states_flat,
+                         labels,
+                     )
+                     loss_mask = labels != IGNORE_INDEX
+@@ -1056,6 +1060,102 @@
+                     loss = mdm_loss + path_loss
+                     loss_components["mdm"] = mdm_loss.detach()
+                     loss_components["path"] = path_loss.detach()
++                    
++                    # Compute noise and clean token losses
++                    if casual_labels is not None and noise_mask is not None:
++                        # Shift casual_labels and noise_mask to align
++                        sp_enabled = get_parallel_state().sp_enabled
++                        if not sp_enabled:
++                            casual_labels_shifted = (
++                                casual_labels[..., 1:].contiguous()
++                            )
++                            noise_mask_shifted = (
++                                noise_mask[..., 1:].contiguous()
++                            )
++                            student_tokens_shifted = (
++                                input_ids[..., 1:].contiguous()
++                                if input_ids is not None
++                                else None
++                            )
++                        else:
++                            casual_labels_shifted = casual_labels
++                            noise_mask_shifted = noise_mask
++                            student_tokens_shifted = input_ids
++                        
++                        casual_labels_flat = casual_labels_shifted.view(-1)
++                        noise_mask_flat = noise_mask_shifted.view(-1)
++                        student_tokens_flat = (
++                            student_tokens_shifted.view(-1)
++                            if student_tokens_shifted is not None
++                            else None
++                        )
++                        
++                        # Identify noise and clean positions
++                        is_valid = casual_labels_flat != IGNORE_INDEX
++                        noise_positions = noise_mask_flat & is_valid
++                        clean_positions = (
++                            (~noise_mask_flat)
++                            & is_valid
++                            & (labels == IGNORE_INDEX)
++                        )
++                        
++                        # Compute token loss for all positions
++                        loss_fct_all = LigerFusedLinearCrossEntropyLoss(
++                            reduction="none", ignore_index=IGNORE_INDEX
++                        )
++                        all_token_loss = loss_fct_all(
++                            self.lm_head.weight,
++                            hidden_states_flat,
++                            casual_labels_flat,
++                        )
++                        
++                        # Noise token loss (with gradient)
++                        if noise_positions.any() and noise_token_wt:
++                            noise_denom = noise_positions.sum() + 1e-8
++                            noise_loss = (
++                                (all_token_loss * noise_positions).sum() 
++                                / noise_denom
++                            )
++                            loss = loss + noise_token_wt * noise_loss
++                            loss_components["noise"] = noise_loss.detach()
++                        
++                        # Clean token loss (with gradient)
++                        if clean_positions.any() and clean_token_wt:
++                            clean_denom = clean_positions.sum() + 1e-8
++                            clean_loss = (
++                                (all_token_loss * clean_positions).sum() 
++                                / clean_denom
++                            )
++                            loss = loss + clean_token_wt * clean_loss
++                            loss_components["clean"] = clean_loss.detach()
++
++                        if student_tokens_flat is not None:
++                            with torch.no_grad():
++                                student_neg_logprob = loss_fct_all(
++                                    self.lm_head.weight,
++                                    hidden_states_flat.detach(),
++                                    student_tokens_flat,
++                                )
++                                student_conf = torch.exp(-student_neg_logprob)
++                                noise_conf_val = None
++                                clean_conf_val = None
++                                
++                                if noise_positions.any():
++                                    noise_conf_val = student_conf[noise_positions].mean()
++                                    loss_components["noise_conf"] = noise_conf_val.detach()
++                                if clean_positions.any():
++                                    clean_conf_val = student_conf[clean_positions].mean()
++                                    loss_components["clean_conf"] = clean_conf_val.detach()
++                                
++                                # Compute confidence ratio: clean_conf / noise_conf
++                                # Add safeguards against division by zero and overflow
++                                if noise_conf_val is not None and clean_conf_val is not None:
++                                    # Clamp noise_conf to avoid division by very small numbers
++                                    noise_conf_clamped = torch.clamp(noise_conf_val, min=1e-8)
++                                    conf_ratio = clean_conf_val / noise_conf_clamped
++                                    # Clamp the ratio to a reasonable range to avoid logging issues
++                                    conf_ratio = torch.clamp(conf_ratio, min=0.0, max=10000.0)
++                                    loss_components["conf_ratio"] = conf_ratio.detach()
+                 else:
+                     loss_fct = LigerFusedLinearCrossEntropyLoss(reduction="mean")
+                     if not get_parallel_state().sp_enabled:
+--- a/veomni/models/transformers/qwen3/modeling_qwen3.py
++++ b/veomni/models/transformers/qwen3/modeling_qwen3.py
+@@ -822,6 +822,7 @@
+         mask_ratio: Optional[torch.FloatTensor] = None,
+         casual_input_ids: Optional[torch.LongTensor] = None,
+         casual_labels: Optional[torch.LongTensor] = None,
++        noise_mask: Optional[torch.Tensor] = None,
+         use_cache: Optional[bool] = None,
+         output_attentions: Optional[bool] = None,
+         output_hidden_states: Optional[bool] = None,
+@@ -829,6 +830,8 @@
+         logits_to_keep: Union[int, torch.Tensor] = 0,
+         is_causal: bool = True,
+         repr_align_wt: Optional[float] = None,
++        noise_token_wt: Optional[float] = None,
++        clean_token_wt: Optional[float] = None,
+         **kwargs: Unpack[KwargsForCausalLM],
+     ) -> CausalLMOutputWithPast:
+         r"""
+@@ -975,9 +978,10 @@
+                     if not get_parallel_state().sp_enabled:
+                         # Shift so that tokens < n predict n
+                         hidden_states = hidden_states[..., :-1, :].contiguous()
++                    hidden_states_flat = hidden_states.view(-1, self.config.hidden_size)
+                     token_loss = loss_fct(
+                         self.lm_head.weight,
+-                        hidden_states.view(-1, self.config.hidden_size),
++                        hidden_states_flat,
+                         labels,
+                     )
+                     loss_mask = labels != IGNORE_INDEX
+@@ -989,6 +993,97 @@
+                     loss = mdm_loss + path_loss
+                     loss_components["mdm"] = mdm_loss.detach()
+                     loss_components["path"] = path_loss.detach()
++
++                    # Compute noise and clean token losses + confidence
++                    if casual_labels is not None and noise_mask is not None:
++                        sp_enabled = get_parallel_state().sp_enabled
++                        if not sp_enabled:
++                            casual_labels_shifted = casual_labels[..., 1:].contiguous()
++                            noise_mask_shifted = noise_mask[..., 1:].contiguous()
++                            student_tokens_shifted = (
++                                input_ids[..., 1:].contiguous() if input_ids is not None else None
++                            )
++                        else:
++                            casual_labels_shifted = casual_labels
++                            noise_mask_shifted = noise_mask
++                            student_tokens_shifted = input_ids
++
++                        casual_labels_flat = casual_labels_shifted.view(-1)
++                        noise_mask_flat = noise_mask_shifted.view(-1)
++                        student_tokens_flat = (
++                            student_tokens_shifted.view(-1)
++                            if student_tokens_shifted is not None
++                            else None
++                        )
++
++                        # Identify noise and clean positions
++                        is_valid = casual_labels_flat != IGNORE_INDEX
++                        noise_positions = noise_mask_flat & is_valid
++                        clean_positions = (
++                            (~noise_mask_flat)
++                            & is_valid
++                            & (labels == IGNORE_INDEX)
++                        )
++
++                        # Compute token loss for all positions
++                        loss_fct_all = LigerFusedLinearCrossEntropyLoss(
++                            reduction="none", ignore_index=IGNORE_INDEX
++                        )
++                        all_token_loss = loss_fct_all(
++                            self.lm_head.weight,
++                            hidden_states_flat,
++                            casual_labels_flat,
++                        )
++
++                        # Noise token loss (with gradient)
++                        if noise_positions.any() and noise_token_wt:
++                            noise_denom = noise_positions.sum() + 1e-8
++                            noise_loss = (
++                                (all_token_loss * noise_positions).sum()
++                                / noise_denom
++                            )
++                            loss = loss + noise_token_wt * noise_loss
++                            loss_components["noise"] = noise_loss.detach()
++
++                        # Clean token loss (with gradient)
++                        if clean_positions.any() and clean_token_wt:
++                            clean_denom = clean_positions.sum() + 1e-8
++                            clean_loss = (
++                                (all_token_loss * clean_positions).sum()
++                                / clean_denom
++                            )
++                            loss = loss + clean_token_wt * clean_loss
++                            loss_components["clean"] = clean_loss.detach()
++
++                        # Confidence metrics
++                        if student_tokens_flat is not None:
++                            with torch.no_grad():
++                                student_neg_logprob = loss_fct_all(
++                                    self.lm_head.weight,
++                                    hidden_states_flat.detach(),
++                                    student_tokens_flat,
++                                )
++                                student_conf = torch.exp(-student_neg_logprob)
++                                noise_conf_val = None
++                                clean_conf_val = None
++                                
++                                if noise_positions.any():
++                                    noise_conf_val = student_conf[noise_positions].mean()
++                                    loss_components["noise_conf"] = noise_conf_val.detach()
++                                if clean_positions.any():
++                                    clean_conf_val = student_conf[clean_positions].mean()
++                                    loss_components["clean_conf"] = clean_conf_val.detach()
++                                
++                                # Compute confidence ratio: clean_conf / noise_conf
++                                # Add safeguards against division by zero and overflow
++                                if noise_conf_val is not None and clean_conf_val is not None:
++                                    # Clamp noise_conf to avoid division by very small numbers
++                                    noise_conf_clamped = torch.clamp(noise_conf_val, min=1e-8)
++                                    conf_ratio = clean_conf_val / noise_conf_clamped
++                                    # Clamp the ratio to a reasonable range to avoid logging issues
++                                    conf_ratio = torch.clamp(conf_ratio, min=0.0, max=10000.0)
++                                    loss_components["conf_ratio"] = conf_ratio.detach()
++
+                 else:
+                     loss_fct = LigerFusedLinearCrossEntropyLoss(reduction="mean", ignore_index=IGNORE_INDEX)
+                     if not get_parallel_state().sp_enabled:
+--- a/veomni/utils/arguments.py
++++ b/veomni/utils/arguments.py
+@@ -246,6 +246,18 @@
+         default=0.0,
+         metadata={"help": "Weight for representation alignment loss (0 = disabled). Used for MDM training with teacher model."},
+     )
++    mixture_prob: float = field(
++        default=0.0,
++        metadata={"help": "Probability of adding mixture noise to non-masked tokens (0 = disabled)."},
++    )
++    noise_token_wt: float = field(
++        default=0.0,
++        metadata={"help": "Weight for noise token loss (0 = disabled). Loss participates in gradient."},
++    )
++    clean_token_wt: float = field(
++        default=0.0,
++        metadata={"help": "Weight for clean token loss (0 = disabled). Loss participates in gradient."},
++    )
+     dyn_bsz: bool = field(
+         default=True,
+         metadata={"help": "Enable dynamic batch size for padding-free training."},
+@@ -396,6 +408,14 @@
+         default=0,
+         metadata={"help": "Run HumanEval evaluation every N steps. Set to 0 to disable."},
+     )
++    eval_before_train: bool = field(
++        default=False,
++        metadata={"help": "Run evaluation once before training starts."},
++    )
++    eval_batch_size: int = field(
++        default=10,
++        metadata={"help": "Batch size for HumanEval evaluation."},
++    )
+     save_hf_weights: bool = field(
+         default=True,
+         metadata={"help": "Save the huggingface format weights to the last checkpoint dir."},

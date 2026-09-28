@@ -1,0 +1,539 @@
+# Copyright 2025 Bytedance Ltd. and/or its affiliates
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+from abc import ABC, abstractmethod
+from collections import defaultdict
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
+
+import torch
+import torch.nn.functional as F
+from torch.nn.utils.rnn import pad_sequence
+from torch.utils.data._utils.collate import default_collate
+
+from ..distributed.parallel_state import get_parallel_state
+from ..utils import logging
+from ..utils.seqlen_pos_transform_utils import len2culen, pos2culen
+from .constants import IGNORE_INDEX
+
+
+logger = logging.get_logger(__name__)
+
+
+@dataclass
+class DataCollator(ABC):
+    """
+    Used in dataloader as a collate_fn.
+    """
+
+    @abstractmethod
+    def __call__(self, features: Sequence[Dict[str, Any]]) -> Dict[str, "torch.Tensor"]:
+        """
+        Converts a list of features to batched tensor dict.
+        """
+        ...
+
+
+class CollatePipeline:
+    def __init__(self, data_collators: Optional[Union[Callable, List[Callable]]] = None):
+        """
+        Args:
+            data_collators: a list of data collators or a single data collator
+        """
+
+        if not isinstance(data_collators, (list, tuple)):
+            data_collators = [data_collators]
+        self.data_collators = data_collators
+
+    def __call__(self, batch: Sequence[Dict[str, Any]]):
+        """
+        process data batch through data collators.
+
+        Args:
+            batch: the original input data batch
+
+        Returns:
+            batch: the processed data batch
+
+        """
+        for data_collator in self.data_collators:
+            batch = data_collator(batch)
+        return batch
+
+
+@dataclass
+class DataCollatorWithPadding(DataCollator):
+    """
+    Data collator with padding.
+    """
+
+    pad_token_id: int = 0
+
+    def __call__(self, features: Sequence[Dict[str, "torch.Tensor"]]) -> Dict[str, "torch.Tensor"]:
+        batch = defaultdict(list)
+
+        # batching features
+        for feature in features:
+            for key in feature.keys():
+                batch[key].append(feature[key])
+
+        for key in batch.keys():
+            # process padding features
+            if key in ["input_ids", "attention_mask", "position_ids", "images_seq_mask"]:
+                batch[key] = pad_sequence(batch[key], batch_first=True, padding_value=0)
+            elif key in ["labels", "labels_image"]:
+                batch[key] = pad_sequence(batch[key], batch_first=True, padding_value=IGNORE_INDEX)
+            else:
+                batch[key] = default_collate(batch[key])
+
+        return batch
+
+
+@dataclass
+class DataCollatorWithPacking(DataCollator):
+    """
+    Data collator with packing.
+    """
+
+    def __call__(self, features: Sequence[Dict[str, "torch.Tensor"]]) -> Dict[str, "torch.Tensor"]:
+        seqlens = torch.tensor([len(feature["input_ids"]) for feature in features], dtype=torch.long)
+        batch = {"cu_seqlens": len2culen(seqlens)}
+        for input_name in features[0].keys():
+            if input_name in ("input_ids", "attention_mask", "labels"):
+                batch[input_name] = torch.cat([feature[input_name] for feature in features])
+            else:
+                batch[input_name] = default_collate([feature[input_name] for feature in features])
+
+        return batch
+
+
+@dataclass
+class DataCollatorWithPositionIDs(DataCollator):
+    """
+    Data collator with packing by position ids.
+    """
+
+    def __call__(self, features: Sequence[Dict[str, "torch.Tensor"]]) -> Dict[str, "torch.Tensor"]:
+        batch = {}
+        for input_name in features[0].keys():
+            if input_name in ("input_ids", "attention_mask", "labels", "position_ids"):
+                batch[input_name] = torch.cat([feature[input_name] for feature in features], dim=-1).unsqueeze(0)
+            else:
+                batch[input_name] = default_collate([feature[input_name] for feature in features])
+
+        if "position_ids" not in batch:
+            batch["position_ids"] = torch.cat(
+                [torch.arange(len(feature["input_ids"])) for feature in features]
+            ).unsqueeze(0)
+
+        if "labels" in batch:
+            cu_seqlens = pos2culen(batch["position_ids"])
+            batch["labels"][:, cu_seqlens[1:-1]] = IGNORE_INDEX
+
+        return batch
+
+
+@dataclass
+class DataCollatorWithPositionIDsMasking(DataCollator):
+    """
+    Enhanced data collator with masking for MDM training with teacher model support.
+    
+    Generates:
+    - input_ids: masked sequence for student model
+    - casual_input_ids: original unmasked sequence for teacher model  
+    - left_mask: positions to the left of masked tokens for representation alignment
+    - mask_ratio: masking ratio for loss weighting
+    """
+    def __init__(self, mask_token_id: int):
+        self.mask_token_id = mask_token_id
+
+    def _random_masking(self, input_ids: "torch.Tensor") -> tuple:
+        """
+        Randomly mask input_ids and generate alignment masks.
+        
+        Returns:
+            masked_input_ids: input_ids with masked tokens
+            mask_ratio: ratio of masked tokens
+            left_mask: mask indicating positions to the left of masked tokens
+        """
+        mask_ratio = torch.rand(1, device=input_ids.device).clamp(1/500, 1-1/500)
+        mask_indices = torch.rand_like(input_ids.float()) < mask_ratio
+        
+        # Create left_mask: positions to the left of masked tokens
+        left_mask = torch.zeros_like(input_ids, dtype=torch.float)
+        for i in range(1, input_ids.size(-1)):
+            left_mask[..., i-1] = mask_indices[..., i].float()
+        
+        # Apply masking
+        masked_input_ids = input_ids.clone()
+        masked_input_ids[mask_indices] = self.mask_token_id
+        
+        return masked_input_ids, mask_ratio.repeat(input_ids.size(0)), left_mask
+
+    def __call__(self, features: Sequence[Dict[str, "torch.Tensor"]]) -> Dict[str, "torch.Tensor"]:
+        batch = {}
+        
+        # Process each input type
+        for input_name in features[0].keys():
+            if input_name in ("input_ids", "attention_mask", "labels", "position_ids"):
+                if input_name == "input_ids":
+                    # Store original input_ids as casual_input_ids for teacher model
+                    casual_input_ids = torch.cat([feature[input_name] for feature in features], dim=-1).unsqueeze(0)
+                    batch["casual_input_ids"] = casual_input_ids
+                    
+                    # Apply masking and generate alignment masks
+                    masking_results = [self._random_masking(feature[input_name]) for feature in features]
+                    batch[input_name] = torch.cat([result[0] for result in masking_results], dim=-1).unsqueeze(0)
+                    batch["mask_ratio"] = torch.cat([result[1] for result in masking_results], dim=-1).unsqueeze(0)
+                    batch["left_mask"] = torch.cat([result[2] for result in masking_results], dim=-1).unsqueeze(0)
+                else:
+                    batch[input_name] = torch.cat([feature[input_name] for feature in features], dim=-1).unsqueeze(0)
+            else:
+                batch[input_name] = default_collate([feature[input_name] for feature in features])
+
+        # Generate position_ids if not present
+        if "position_ids" not in batch:
+            batch["position_ids"] = torch.cat(
+                [torch.arange(len(feature["input_ids"])) for feature in features]
+            ).unsqueeze(0)
+
+        # Set labels for loss computation (only masked positions matter)
+        if "labels" in batch:
+            batch["casual_labels"] = batch["labels"].clone()
+            cu_seqlens = pos2culen(batch["position_ids"])
+            batch["casual_labels"][:, cu_seqlens[1:-1]] = IGNORE_INDEX
+            batch["labels"][batch["input_ids"] != self.mask_token_id] = IGNORE_INDEX
+        
+        return batch
+
+
+@dataclass
+class DataCollatorWithPositionIDsMixture_Masking(DataCollator):
+    """
+    Enhanced data collator with masking + mixture noise for robust MDM training.
+    
+    Generates:
+    - input_ids: sequence with masked tokens and noise tokens
+    - casual_input_ids: original unmasked sequence for teacher model
+    - mask_ratio: masking ratio
+    - noise_mask: positions where noise was applied (for loss computation)
+    """
+    def __init__(self, mask_token_id: int, mixture_prob: float = 0.1, vocab_size: int = 151936):
+        self.mask_token_id = mask_token_id
+        self.mixture_prob = mixture_prob
+        self.vocab_size = vocab_size
+
+    def _sample_random_tokens(
+        self,
+        num_samples: int,
+        original_tokens: "torch.Tensor",
+        device: "torch.device",
+        dtype: "torch.dtype",
+    ) -> "torch.Tensor":
+        """
+        Sample random tokens excluding mask_token_id and original_tokens.
+
+        Args:
+            num_samples: Number of tokens to sample
+            original_tokens: Tokens to avoid (same shape as output)
+            device: Device for tensor operations
+            dtype: Data type for output tensor
+
+        Returns:
+            random_tokens: Sampled tokens guaranteed to be different
+            from mask_token_id and original_tokens
+        """
+        # Sample from [0, vocab_size-1) and skip mask_token_id
+        random_tokens = torch.randint(
+            0, self.vocab_size - 1, (num_samples,),
+            device=device, dtype=dtype,
+        )
+        random_tokens += (random_tokens >= self.mask_token_id).to(dtype)
+
+        # Handle collisions with original tokens (rare but possible)
+        same_as_original = (random_tokens == original_tokens)
+        max_retries = 5
+
+        for _ in range(max_retries):
+            if not same_as_original.any():
+                break
+
+            num_resample = int(same_as_original.sum().item())
+            resampled = torch.randint(
+                0, self.vocab_size - 1, (num_resample,),
+                device=device, dtype=dtype,
+            )
+            resampled += (resampled >= self.mask_token_id).to(dtype)
+            random_tokens[same_as_original] = resampled
+            same_as_original = (random_tokens == original_tokens)
+
+        # Final fallback: deterministic offset if retries exhausted
+        if same_as_original.any():
+            num_resample = int(same_as_original.sum().item())
+            offsets = torch.randint(
+                0, self.vocab_size, (num_resample,),
+                device=device, dtype=dtype,
+            )
+            random_tokens[same_as_original] = (
+                (original_tokens[same_as_original] + offsets)
+                % self.vocab_size
+            )
+
+            # Ensure not equal to mask_token_id
+            equals_mask = (random_tokens == self.mask_token_id)
+            if equals_mask.any():
+                random_tokens[equals_mask] = (
+                    (random_tokens[equals_mask] + 1) % self.vocab_size
+                )
+
+        return random_tokens
+
+    def _random_masking_with_mixture(
+        self, input_ids: "torch.Tensor"
+    ) -> tuple:
+        """
+        Apply random masking + mixture noise to non-masked tokens.
+
+        Returns:
+            noisy_input_ids: input_ids with masked and noise tokens
+            mask_ratio: ratio of masked tokens
+            noise_mask: mask indicating noise token positions
+        """
+        # Step 1: Apply random masking
+        mask_ratio = torch.rand(
+            1, device=input_ids.device
+        ).clamp(1/500, 1-1/500)
+        mask_indices = torch.rand_like(input_ids.float()) < mask_ratio
+
+        masked_input_ids = input_ids.clone()
+        masked_input_ids[mask_indices] = self.mask_token_id
+
+        # Step 2: Apply mixture noise to non-masked tokens
+        noise_mask = torch.zeros_like(input_ids, dtype=torch.bool)
+        replace_mask = torch.zeros_like(input_ids, dtype=torch.bool)
+
+        if self.mixture_prob > 0.0:
+            replace_candidates = ~mask_indices
+
+            if replace_candidates.any():
+                rand_values = torch.rand_like(input_ids.float())
+                replace_mask = (
+                    replace_candidates & (rand_values < self.mixture_prob)
+                )
+
+                if replace_mask.any():
+                    num_replace = int(replace_mask.sum().item())
+                    original_tokens = input_ids[replace_mask]
+
+                    # Use helper function to sample random tokens
+                    random_tokens = self._sample_random_tokens(
+                        num_replace,
+                        original_tokens,
+                        input_ids.device,
+                        input_ids.dtype,
+                    )
+
+                    masked_input_ids[replace_mask] = random_tokens
+                    noise_mask = replace_mask.clone()
+
+        return (
+            masked_input_ids,
+            mask_ratio.repeat(input_ids.size(0)),
+            noise_mask
+        )
+
+    def __call__(self, features: Sequence[Dict[str, "torch.Tensor"]]) -> Dict[str, "torch.Tensor"]:
+        batch = {}
+        
+        # Process each input type
+        for input_name in features[0].keys():
+            if input_name in ("input_ids", "attention_mask", "labels", "position_ids"):
+                if input_name == "input_ids":
+                    # Store original input_ids
+                    casual_input_ids = torch.cat(
+                        [feature[input_name] for feature in features], dim=-1
+                    ).unsqueeze(0)
+                    batch["casual_input_ids"] = casual_input_ids
+                    
+                    # Apply masking + mixture noise
+                    masking_results = [
+                        self._random_masking_with_mixture(feature[input_name]) 
+                        for feature in features
+                    ]
+                    batch[input_name] = torch.cat(
+                        [result[0] for result in masking_results], dim=-1
+                    ).unsqueeze(0)
+                    batch["mask_ratio"] = torch.cat(
+                        [result[1] for result in masking_results], dim=-1
+                    ).unsqueeze(0)
+                    noise_mask = torch.cat(
+                        [result[2] for result in masking_results], dim=-1
+                    ).unsqueeze(0)
+                    batch["noise_mask"] = noise_mask
+                else:
+                    batch[input_name] = torch.cat(
+                        [feature[input_name] for feature in features], dim=-1
+                    ).unsqueeze(0)
+            else:
+                batch[input_name] = default_collate([feature[input_name] for feature in features])
+
+        # Generate position_ids if not present
+        if "position_ids" not in batch:
+            batch["position_ids"] = torch.cat(
+                [torch.arange(len(feature["input_ids"])) for feature in features]
+            ).unsqueeze(0)
+
+        # Set labels for loss computation
+        if "labels" in batch:
+            batch["casual_labels"] = batch["labels"].clone()
+            cu_seqlens = pos2culen(batch["position_ids"])
+            batch["casual_labels"][:, cu_seqlens[1:-1]] = IGNORE_INDEX
+            
+            # For student: keep labels for both masked and noise positions
+            # Clean positions will have IGNORE_INDEX
+            is_masked = (batch["input_ids"] == self.mask_token_id)
+            is_noise = batch["noise_mask"]
+            is_clean = ~is_masked & ~is_noise
+            batch["labels"][is_clean] = IGNORE_INDEX
+            
+        return batch
+    
+    
+@dataclass
+class NoopDataCollator(DataCollator):
+    """
+    Data collator with no operation, used in dynamic batch dataloader at main process.
+    """
+
+    def __call__(self, features: Sequence[Dict[str, "torch.Tensor"]]) -> List[Dict[str, "torch.Tensor"]]:
+        return features
+
+
+@dataclass
+class UnpackDataCollator(DataCollator):
+    """
+    Data collator to unpack examples, used in dynamic batch dataloader at worker process.
+    """
+
+    def __call__(self, features: Sequence[Dict[str, "torch.Tensor"]]) -> Dict[str, "torch.Tensor"]:
+        return features[0]
+
+
+@dataclass
+class MakeMicroBatchCollator(DataCollator):
+    """
+    Data collator to build micro batches, used in mapping dataloader.
+    """
+
+    num_micro_batch: int
+    internal_data_collator: "DataCollator"
+
+    def __call__(self, features: Sequence[Tuple[Dict[str, "torch.Tensor"]]]) -> List[Dict[str, "torch.Tensor"]]:
+        micro_batch_size = len(features) // self.num_micro_batch
+        for i in range(len(features)):
+            features[i] = features[i][0]  # 1-to-N inverse transform
+
+        micro_batches = []
+        for i in range(0, len(features), micro_batch_size):
+            micro_batches.append(self.internal_data_collator(features[i : i + micro_batch_size]))
+
+        return micro_batches
+
+
+@dataclass
+class TextSequenceShardCollator(DataCollator):
+    """
+    Data collator to chunk inputs according to sequence parallelism.
+    Args:
+        rmpad: whether the samples is packing or not.
+        rmpad_with_pos_ids: whether the samples is packing by position ids or not.
+        pad_token_id: the id of the padding token.
+    """
+
+    rmpad: bool
+    rmpad_with_pos_ids: bool
+    pad_token_id: int = 0
+
+    def __post_init__(self):
+        self.sp_size = get_parallel_state().sp_size
+        self.sp_rank = get_parallel_state().sp_rank
+
+    def sp_slice(self, tensor: "torch.Tensor", dim: int = -1) -> "torch.Tensor":
+        """
+        Slices a tensor along the specified dimension for sequence parallelism.
+        """
+        seq_length = tensor.size(dim)
+        sp_chunk_size = (seq_length + self.sp_size - 1) // self.sp_size
+        return tensor.narrow(dim, self.sp_rank * sp_chunk_size, sp_chunk_size)
+
+    def sp_padding(
+        self, tensor: "torch.Tensor", dim: int = -1, pad_value: int = 0, pad_length: int = 0
+    ) -> "torch.Tensor":
+        """
+        Pads a tensor with pad_length to aligns tensor with sp size.
+        """
+        if pad_length == 0:
+            return tensor
+
+        pad_shape = list(tensor.shape)
+        pad_shape[dim] = pad_length
+        pad = torch.full(pad_shape, fill_value=pad_value, dtype=tensor.dtype, device=tensor.device)
+        return torch.cat((tensor, pad), dim=dim)
+
+    def __call__(self, batch: Sequence[Dict[str, "torch.Tensor"]]) -> Dict[str, "torch.Tensor"]:
+        input_ids = batch.pop("input_ids")
+        labels = batch.pop("labels")[..., 1:].contiguous()  # shift labels
+        labels = F.pad(labels, (0, 1), "constant", IGNORE_INDEX)
+
+        if self.rmpad_with_pos_ids:  # mask the last token of each sequence
+            cu_seqlens = pos2culen(batch["position_ids"])
+            labels[:, cu_seqlens[1:-1] - 1] = IGNORE_INDEX
+        elif self.rmpad:
+            labels = labels.view(-1)
+            labels[batch["cu_seqlens"][1:-1] - 1] = IGNORE_INDEX
+        else:
+            if "position_ids" not in batch:  # we should calculate the position ids before chunking
+                batch["position_ids"] = torch.arange(0, input_ids.size(-1)).unsqueeze(0)
+
+        # sp padding
+        seq_length = input_ids.size(-1)
+        sp_chunk_size = (seq_length + self.sp_size - 1) // self.sp_size
+        pad_length = sp_chunk_size * self.sp_size - seq_length
+
+        input_ids = self.sp_padding(input_ids, dim=-1, pad_value=self.pad_token_id, pad_length=pad_length)
+        labels = self.sp_padding(labels, dim=-1, pad_value=IGNORE_INDEX, pad_length=pad_length)
+
+        if self.rmpad_with_pos_ids:
+            batch["attention_mask"] = self.sp_padding(
+                batch["attention_mask"], dim=-1, pad_value=1, pad_length=pad_length
+            )
+        else:
+            batch["attention_mask"] = self.sp_padding(
+                batch["attention_mask"], dim=-1, pad_value=0, pad_length=pad_length
+            )
+
+        if self.rmpad:
+            if pad_length > 0:
+                batch["cu_seqlens"] = F.pad(
+                    batch["cu_seqlens"], (0, 1), "constant", batch["cu_seqlens"][-1].item() + pad_length
+                )
+        else:
+            batch["position_ids"] = self.sp_padding(batch["position_ids"], dim=-1, pad_value=0, pad_length=pad_length)
+
+        # sp slice
+        batch["input_ids"] = self.sp_slice(input_ids, dim=-1)
+        batch["labels"] = self.sp_slice(labels, dim=-1)
+
+        return batch

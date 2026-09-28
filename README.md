@@ -311,14 +311,12 @@ CDLM/
 If you find this work useful, please cite:
 
 ```bibtex
-@misc{zhang2025correctivediffusionlanguagemodels,
-      title={Corrective Diffusion Language Models}, 
+@inproceedings{zhang2026corrective,
+      title={Corrective Diffusion Language Models},
       author={Shuibai Zhang and Fred Zhangzhi Peng and Yiheng Zhang and Jin Pan and Grigorios G. Chrysos},
-      year={2025},
-      eprint={2512.15596},
-      archivePrefix={arXiv},
-      primaryClass={cs.LG},
-      url={https://arxiv.org/abs/2512.15596}, 
+      booktitle={Advances in Neural Information Processing Systems},
+      year={2026},
+      url={https://arxiv.org/abs/2512.15596},
 }
 ```
 

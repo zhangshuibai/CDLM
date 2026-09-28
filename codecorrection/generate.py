@@ -280,7 +280,7 @@ def token_bug(canonical: str, n_replace: int, tokenizer: Any, error_type: str):
     if error_type == 'var':
         all_elements_text = {v for v in all_elements_text if not keyword.iskeyword(v)}
         
-    for text in all_elements_text:
+    for text in sorted(all_elements_text):
         ids = tokenizer(text, add_special_tokens=False)["input_ids"]
         l_len = len(ids)
         if l_len not in length_groups:

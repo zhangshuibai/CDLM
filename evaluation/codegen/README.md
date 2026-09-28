@@ -203,7 +203,7 @@ same protocol, and `reference_check` reports how many problems differ from the r
 
 ## Runtime
 
-On one A100-PCIE-40GB, HumanEval with one decoder takes about 20 minutes with 2 or 4 workers, and
+On one otherwise idle A100-PCIE-40GB (expect longer on a shared GPU), HumanEval with one decoder takes about 20 minutes with 2 or 4 workers, and
 MBPP+ with ReMDM about 80 minutes with 4 workers (about 18,700 worker-seconds of generation).
 MBPP and MBPP+ run at batch size 1 and dominate, and on them ReMDM is about twice as slow as vanilla.
 Estimated from these timings, the full grid (four benchmarks, both decoders) takes about 6 hours on

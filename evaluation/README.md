@@ -127,8 +127,9 @@ Reference CRB numbers (paper input set, n_replace = 1, mean over the 12 dataset 
 Reference code-generation numbers: CDLM-OCI on HumanEval with the vanilla decoder gives pass@1 0.2165
 and pass@10 0.4146. This run used `run_codegen_eval.sh` with the Hub id, which resolved to
 `6a3f74ef71272553948f2ebcb307acc702820f91`. That revision differs from the pinned one only in
-`README.md`. No independent reference run exists for this number, and MDLM-OCI was not scored on code
-generation. [`codegen/reference/recorded_runs.json`](codegen/reference/recorded_runs.json) holds
+`README.md`. A second run at the pinned revision `8eb87fe2ab6850ced7606c8a678c84f1b28fd170`, with the
+launcher at the v1.0.1 release, reproduced all 1,640 completions and every per-problem pass@k.
+MDLM-OCI was not scored on code generation. [`codegen/reference/recorded_runs.json`](codegen/reference/recorded_runs.json) holds
 per-problem digests of recorded runs, and these checkpoints have none. So `reference_check` stays
 empty for them, and `codegen_eval.py compare --reference` does not accept them.
 
@@ -401,7 +402,7 @@ These times are per model, on one A100-PCIE-40GB.
 | --- | --- | --- |
 | CRB, full grid (240 cells, 37,028 programs) | about 35 min with 3 refinement jobs (about 0.6 GPU-hours) | about 45 min to 1 h with 8 jobs |
 | CRB, `--nr 1` (48 cells, 12,852 programs) | about 12 min (estimated: about a third of the programs, 12,852 of 37,028) | 35 min measured with 6 jobs on a busy machine |
-| Code generation, HumanEval, one decoder | about 20 min with 2 or 4 workers (22 min measured) | included |
+| Code generation, HumanEval, one decoder | about 20 min with 2 or 4 workers on an otherwise idle GPU (22 min measured; 32 min on a shared GPU) | included |
 | Code generation, MBPP+, ReMDM | about 80 min with 4 workers | included |
 | Code generation, 4 benchmarks × 2 decoders | about 6 h (estimated from the timings above, not measured) | included |
 

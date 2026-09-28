@@ -173,6 +173,11 @@ def main():
         print("crb_compare: no cell compared: no cell has refined or evaluated jsonl in both runs "
               "(check ROOT PREFIX, --nr, --steps, --datasets, --error_types, --tag, --data_num)", file=sys.stderr)
         sys.exit(1)
+    if missing:
+        sys.stdout.flush()
+        print(f"crb_compare: {len(missing)} requested cell(s) missing from at least one run "
+              "(restrict --nr / --steps to the cells both runs have)", file=sys.stderr)
+        sys.exit(2)
 
 
 if __name__ == "__main__":

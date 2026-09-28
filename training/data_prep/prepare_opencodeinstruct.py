@@ -305,6 +305,7 @@ def main():
     print(
         f"  estimated tokens: {tokens / 1e9:.2f}B ({ratio:.4f} tokens/char, {how}); "
         f"a {RUN_TOKENS / 1e6:.1f}M-token 2000-step run uses {RUN_TOKENS / tokens:.2%} of one pass"
+        + (f" (for this {args.shards}-shard subset only; the full corpus is about 2.4B tokens)" if getattr(args, 'shards', None) else "")
     )
 
     out = os.path.join(text_dir, TRAIN_PATH_FILE)

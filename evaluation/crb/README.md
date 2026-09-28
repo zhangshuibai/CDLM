@@ -163,4 +163,7 @@ python evaluation/crb/crb_compare.py --new evaluation/crb/outputs/runs cdlm \
 with `--purge` has neither; for such cells it compares the `*_results_refined_evaluated.jsonl`
 files instead (task id, prompt, completion, step count, `test_passed`), without step-0
 confidences or histories, and counts them in `cells_from_evaluated_only`. It exits with
-status 1 if it compared no cell (wrong root, prefix or grid options).
+status 1 if it compared no cell (wrong root, prefix or grid options), and with status 2 if
+some requested cells are missing from either run (restrict `--nr` / `--steps` to the cells
+both runs have). Status 0 means every requested cell was compared; check the printed
+difference counts for the result.

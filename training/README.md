@@ -199,8 +199,7 @@ liger-kernel 0.5.8 on Linux x86_64:
 ```bash
 conda create -n cdlm-train python=3.11 -y && conda activate cdlm-train
 pip install torch==2.5.0 --index-url https://download.pytorch.org/whl/cu124
-pip install ninja packaging
-pip install flash-attn==2.7.4.post1 --no-build-isolation
+pip install https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.5cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
 pip install -r training/requirements.txt
 ```
 
@@ -216,8 +215,11 @@ That combination is consistent with the other pins but was not re-run with this 
 
 `requirements.txt` has more notes. The points that matter most:
 
-- **flash-attn.** It downloads a prebuilt wheel when one matches the environment. Otherwise it
-  compiles, which needs `nvcc` and a lot of RAM (set `MAX_JOBS=4`).
+- **flash-attn.** The command above installs the official prebuilt wheel for torch 2.5, CUDA 12
+  and Python 3.11, which needs no CUDA toolkit. `pip install flash-attn==2.7.4.post1
+  --no-build-isolation` fails on machines whose `nvcc` is older than CUDA 11.7 (its `setup.py`
+  checks `nvcc` before looking for a prebuilt wheel). Building from source needs `nvcc` >= 11.7,
+  `ninja` and a lot of RAM (`MAX_JOBS=4`).
 - **liger-kernel.** It is required; the loss raises an error without it. Its triton kernels are
   compiled at run time, which needs a C compiler (or `CC`) and the Python headers (conda Python
   ships them).

@@ -13,16 +13,16 @@
 #
 # Install order:
 #   pip install torch==2.5.0 --index-url https://download.pytorch.org/whl/cu124
-#   pip install ninja packaging
-#   pip install flash-attn==2.7.4.post1 --no-build-isolation
+#   pip install https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.5cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
 #   pip install -r requirements.txt
 #
-# flash-attn: its setup.py first tries to fetch the matching prebuilt wheel
-# (flash_attn-2.7.4.post1+cu12torch2.5cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
-# from github.com/Dao-AILab/flash-attention/releases). Only if none matches does
-# it compile from source, which needs nvcc >= 11.7, ninja and a lot of RAM
-# (set MAX_JOBS=4 to limit it). It must be installed after torch, without build
-# isolation.
+# flash-attn: the URL above is the official prebuilt wheel for torch 2.5, CUDA 12,
+# Python 3.11 and the pre-C++11 ABI that the torch 2.5.0 wheels use; it needs no
+# CUDA toolkit. `pip install flash-attn==2.7.4.post1 --no-build-isolation` does not
+# work everywhere: its setup.py checks nvcc before it looks for a prebuilt wheel
+# and aborts when the nvcc on PATH is older than CUDA 11.7 (for example a system
+# CUDA 10.1). Building from source needs nvcc >= 11.7, ninja, packaging and a lot
+# of RAM (MAX_JOBS=4). Either way it must be installed after torch.
 
 torch==2.5.0
 triton==3.1.0

@@ -1,0 +1,107 @@
+# Evaluation environment: CRB refinement + scoring (refine_code.py, evaluate_code.py,
+# codecorrection/generate.py) and code generation (Open-dLLM/eval/eval_completion/eval.py with the
+# vendored Open-dLLM/lm-evaluation-harness). Python 3.11, Linux x86_64. See ENVIRONMENT.md.
+#
+# Install order (torch and flash-attn must come first):
+#   pip install torch==2.5.0 --index-url https://download.pytorch.org/whl/cu121
+#   pip install https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.5cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
+#   pip install -r evaluation/requirements.txt
+#
+# Every version below is the one of the environment that reproduced the paper's CRB and
+# code-generation numbers bitwise (torch 2.5.0+cu121). Do not pip-install Open-dLLM or its
+# lm-evaluation-harness: both are used from PYTHONPATH (see ENVIRONMENT.md).
+# This is not the training environment (training/requirements.txt, transformers 4.57.0).
+
+# ---- torch stack (already installed by the two commands above; listed so pip keeps them)
+torch==2.5.0
+flash-attn==2.7.4.post1
+triton==3.1.0
+# triton 3.1.0 imports setuptools at import time but does not declare it.
+setuptools==78.1.1
+# Pulled in by torch without a version; the verified environment had this one.
+nvidia-nvjitlink-cu12==12.9.86
+
+# ---- model and tokenizer
+# liger-kernel is required for identical numerics: when it is importable, veomni's Qwen2
+# replaces RMSNorm, the SwiGLU MLP and the rotary embedding with liger's triton kernels.
+liger-kernel==0.5.8
+transformers==4.54.1
+tokenizers==0.21.4
+safetensors==0.6.2
+huggingface-hub==0.34.4
+accelerate==1.10.1
+numpy==2.3.2
+# Used by the slow Qwen2Tokenizer (CRB loads the tokenizer with use_fast=False).
+regex==2025.9.1
+
+# ---- imported whenever veomni.models is imported (Open-dLLM/veomni)
+torchdata==0.11.0
+einops==0.8.1
+pillow==11.3.0
+packaging==25.0
+psutil==7.0.0
+PyYAML==6.0.2
+
+# ---- benchmark data and scoring (HF datasets + the evaluate "code_eval" metric)
+datasets==3.6.0
+evaluate==0.4.5
+# datasets 3.6.0 does not bound pandas; pandas 3 is not what the paper's runs used.
+pandas==2.3.2
+pyarrow==21.0.0
+fsspec==2024.6.1
+dill==0.3.8
+multiprocess==0.70.16
+xxhash==3.5.0
+
+# ---- CRB construction (codecorrection/generate.py)
+autopep8==2.3.2
+pycodestyle==2.14.0
+tqdm==4.67.1
+
+# ---- vendored lm-evaluation-harness 0.4.9.1: third-party imports on the code-generation path
+# (lm_eval/models/hf_steered.py imports peft, lm_eval/models/vllm_causallms.py more_itertools,
+# lm_eval/api/metrics.py sacrebleu; task prompts are rendered with jinja2). Without the
+# more-itertools pin, `import lm_eval` only works through the copy vendored in setuptools.
+peft==0.17.1
+more-itertools==10.8.0
+sacrebleu==2.5.1
+Jinja2==3.1.4
+MarkupSafe==2.1.5
+
+# ---- everything else a fresh install pulls in, pinned to the verified versions.
+# Not optional: filelock 3.32.3 (the release pip picks without this pin) raises "os.fork is unsafe
+# while filelock is changing descriptor ownership" inside code_eval, which forks from several
+# threads (see ENVIRONMENT.md).
+filelock==3.13.1
+typing_extensions==4.12.2
+sympy==1.13.1
+mpmath==1.3.0
+networkx==3.3
+requests==2.32.5
+urllib3==2.5.0
+certifi==2025.8.3
+charset-normalizer==3.4.3
+idna==3.10
+hf-xet==1.1.9
+aiohttp==3.12.15
+aiohappyeyeballs==2.6.1
+aiosignal==1.4.0
+attrs==25.3.0
+frozenlist==1.7.0
+multidict==6.6.4
+propcache==0.3.2
+yarl==1.20.1
+python-dateutil==2.9.0.post0
+pytz==2025.2
+tzdata==2025.2
+six==1.17.0
+colorama==0.4.6
+lxml==6.0.1
+portalocker==3.2.0
+tabulate==0.9.0
+
+# ---- only for the upstream multi-process runner Open-dLLM/eval/eval_completion/run_eval.sh
+# (running eval.py as a script imports eval_utils -> wandb; lm-eval's CLI prints its result
+# table with pytablewriter). Not needed otherwise.
+# wandb==0.21.3
+# pytablewriter==1.2.1

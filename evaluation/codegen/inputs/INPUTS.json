@@ -1,0 +1,47 @@
+{
+ "_note": "Benchmark inputs of the four lm-eval tasks. revision: Hub dataset commit, passed to datasets.load_dataset. n_docs, doc_hash_md5, prompt_hash_md5: md5 over the concatenated per-doc doc_hash / prompt_hash that lm-eval logs, in doc_id order. inputs_md5: md5 of the export written by `codegen_eval.py inputs --export` (one JSON line per doc: doc_id, prompt, target, doc). recorded_files_matched: recorded lm-eval samples files of the three published models whose doc, prompt and target hashes all match these inputs.",
+ "humaneval": {
+  "dataset_path": "openai/openai_humaneval",
+  "dataset_name": null,
+  "revision": "7dce6050a7d6d172f3cc5c32aa97f52fa1a2e544",
+  "split": "test",
+  "n_docs": 164,
+  "doc_hash_md5": "e525c083285a9b8294ca3df5fa883041",
+  "prompt_hash_md5": "0a323bdff352a839d639bb1187684d3f",
+  "inputs_md5": "c223d02cef1fd0f9f4d162e341314ea8",
+  "recorded_files_matched": 10
+ },
+ "humaneval_plus": {
+  "dataset_path": "evalplus/humanevalplus",
+  "dataset_name": null,
+  "revision": "d32357cf319e50e9c8d8dab5ea876c72b0fd321b",
+  "split": "test",
+  "n_docs": 164,
+  "doc_hash_md5": "c178939954b29ed367f7bd196251f892",
+  "prompt_hash_md5": "3789e83fa6846608dedeffcae951cb3d",
+  "inputs_md5": "6c4956957dd14c9f955b56b7a24821b5",
+  "recorded_files_matched": 10
+ },
+ "mbpp": {
+  "dataset_path": "google-research-datasets/mbpp",
+  "dataset_name": "full",
+  "revision": "4bb6404fdc6cacfda99d4ac4205087b89d32030c",
+  "split": "test",
+  "n_docs": 500,
+  "doc_hash_md5": "f28bfbe3eea8b06e15a4b16a99bdf4ad",
+  "prompt_hash_md5": "c49ab91672659842a219de5d7744c173",
+  "inputs_md5": "3633461415a37f852f5d4bccdfe5ab63",
+  "recorded_files_matched": 6
+ },
+ "mbpp_plus": {
+  "dataset_path": "evalplus/mbppplus",
+  "dataset_name": null,
+  "revision": "b2d74c91837c3f2a20c1299ae98133cbe7cfa077",
+  "split": "test",
+  "n_docs": 378,
+  "doc_hash_md5": "d30980cb60b81c285ef3f2a1e40bdc5f",
+  "prompt_hash_md5": "45364a54e5b8d47364856bccda227ea9",
+  "inputs_md5": "fef26d9870584405b7d02020fead871f",
+  "recorded_files_matched": 6
+ }
+}

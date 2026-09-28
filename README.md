@@ -59,32 +59,44 @@ git clone https://github.com/zhangshuibai/CDLM.git
 cd CDLM
 ```
 
-**Note**: This repository supports multiple diffusion language models. Please refer to the respective model repositories for installation instructions:
+Evaluation and training use separate environments:
 
-- **LLaDA models**: Follow the installation guide at [ML-GSAI/LLaDA](https://github.com/ML-GSAI/LLaDA)
-- **Dream models**: Follow the installation guide at [DreamLM/Dream](https://github.com/DreamLM/Dream.git)
-- **Open-dLLM models**: Follow the installation guide at [pengzhangzhi/Open-dLLM](https://github.com/pengzhangzhi/Open-dLLM.git)
+- **Evaluation**, which covers CRB refinement and scoring, code generation and the example scripts
+  below: Python 3.11 with the pins of
+  [evaluation/requirements.txt](evaluation/requirements.txt). Install steps and notes are in
+  [evaluation/ENVIRONMENT.md](evaluation/ENVIRONMENT.md):
 
-Additionally, install the core dependencies required by this repository:
+  ```bash
+  conda create -n cdlm-eval python=3.11.13 -y && conda activate cdlm-eval
+  pip install torch==2.5.0 --index-url https://download.pytorch.org/whl/cu121
+  pip install https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.5cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
+  pip install -r evaluation/requirements.txt
+  ```
 
-```bash
-pip install torch transformers datasets evaluate autopep8 tqdm
-```
+- **Training**: see [training/README.md](training/README.md#environment). It uses a different torch
+  build and a different transformers version.
 
-Open-dCoder models are loaded with the `veomni` package from the bundled `Open-dLLM/` directory.
-From the repository root:
+The evaluation environment was verified with the Open-dCoder models. LLaDA and Dream models are
+loaded with `trust_remote_code`; their requirements are in
+[ML-GSAI/LLaDA](https://github.com/ML-GSAI/LLaDA) and [DreamLM/Dream](https://github.com/DreamLM/Dream.git).
+
+Open-dCoder models are loaded with the `veomni` package from the bundled `Open-dLLM/` directory. The
+launchers in `evaluation/` set `PYTHONPATH` themselves. To run the top-level scripts directly, set it
+from the repository root:
 
 ```bash
 export PYTHONPATH="$PWD/Open-dLLM"
 python -c "import veomni; print(veomni.__file__)"   # should print <repo>/Open-dLLM/veomni/__init__.py
 ```
 
-Do not put `training/` on `PYTHONPATH` here; its `veomni` is the training copy (see
-[training/README.md](training/README.md#environment)).
+Do not `pip install` `Open-dLLM/`. Do not put `training/` on `PYTHONPATH` here either: its `veomni`
+is the training copy (see [training/README.md](training/README.md#environment)).
 
 ### Usage
 
-The example scripts run a complete pipeline: **code generation → corruption with controlled errors → iterative refinement → evaluation**.
+To reproduce the paper's evaluations, see [Evaluation](#evaluation). The example scripts run a
+complete pipeline for one setting: **code generation → corruption with controlled errors →
+iterative refinement → evaluation**.
 
 ```bash
 # For LLaDA model
@@ -113,6 +125,30 @@ You can modify the following parameters in the example scripts:
 - **`TEMPERATURE`**: Sampling temperature for refinement (default: `0.0` for greedy decoding)
 - **`ALGORITHM`**: Refinement algorithm (`self_conf-remask:vanilla` for confidence-based remasking)
 - **`CONFIDENCE_THRESHOLD`**: Confidence threshold for remasking decisions (default: `0.90`)
+
+## Evaluation
+
+[evaluation/README.md](evaluation/README.md) describes the two evaluations of the paper's 0.5B
+models. Each one is a single script, run from the repository root:
+
+```bash
+# CRB error localisation and correction (CDLM-0.5B in Tables 3, 4 and 7); add --nr 1 for the headline cells only
+bash evaluation/crb/run_crb.sh Shuibai12138/Open-Dcoder-0.5B-mixture-mdm-step2000 cdlm --gpus 0
+
+# from-scratch code generation on HumanEval(+) and MBPP(+) (Table 5 top, Table 9)
+bash evaluation/codegen/run_codegen_eval.sh \
+    Shuibai12138/Open-Dcoder-0.5B-mixture-mdm-step2000@4581e1d4215a4055ccce6eaaf898f27276a8759c outputs/codegen/cdlm 0
+```
+
+- Both scripts accept a Hub id or a local checkpoint. They check their code, inputs and model
+  before running, and write a JSON summary.
+- For CDLM-0.5B, on an A100, the repository code reproduced the paper's runs bit for bit:
+  - the CRB refined programs at `n_replace = 1`;
+  - the HumanEval samples with vanilla decoding.
+- [evaluation/README.md](evaluation/README.md) lists exactly what was checked, the runtimes, and why
+  CRB needs a model name that contains `open-dcoder`. `Shuibai12138/CDLM-0.5B` has the same weights
+  as `Shuibai12138/Open-Dcoder-0.5B-mixture-mdm-step2000`, but CRB needs the second name.
+- Both evaluations execute model-generated code. Run them in an isolated environment.
 
 ## Controlled Code Corruption (`codecorrection/generate.py`)
 

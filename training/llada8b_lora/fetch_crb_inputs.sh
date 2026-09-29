@@ -7,14 +7,14 @@
 #       -> buggy_datasets/<ds>/evaluated/...   read by the CRB repair sweep (run_crb_cell.sh)
 #   llada-8b-base-localisation/<ds>/LLaDA-8B-Base_<err>_2_wrong_1.jsonl
 #       -> buggy_datasets/<ds>/...             read by the localisation evaluation (eval_confidence.py)
-# For var / literal, the two sets hold different instances (see the dataset card); this is how the
+# For var / literal, the two sets hold partly different instances (see the dataset card); this is how the
 # experiment was run. Every file is checked against crb_inputs.md5. An existing file with a different
 # md5 is an error unless --force is given, which replaces it.
 #
 # Environment overrides: CRB_INPUTS_REVISION [pinned below], PYTHON [python].
 set -euo pipefail
 
-REVISION=${CRB_INPUTS_REVISION:-ca450c93cce16e9b21402914ae218324f48d4b5f}
+REVISION=${CRB_INPUTS_REVISION:-a00037635943c930fa5d8e0961c7ca26127ca53f}
 FORCE=0
 case "${1:-}" in --force) FORCE=1 ;; "") ;; *) echo "usage: fetch_crb_inputs.sh [--force]"; exit 1 ;; esac
 

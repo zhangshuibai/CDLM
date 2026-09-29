@@ -57,14 +57,17 @@ The adapters of the reported runs are on the Hugging Face Hub. Each repository h
 
 | adapter | Hugging Face | revision |
 |---|---|---|
-| CDLM LoRA, 2000 steps (200 steps: `step200/`) | [`Shuibai12138/LLaDA-8B-CDLM-LoRA`](https://huggingface.co/Shuibai12138/LLaDA-8B-CDLM-LoRA) | `eea470e0d03e08030fdbdac4c6944431f8ec0c87` |
-| MDLM LoRA, 2000 steps (200 steps: `step200/`) | [`Shuibai12138/LLaDA-8B-MDLM-LoRA`](https://huggingface.co/Shuibai12138/LLaDA-8B-MDLM-LoRA) | `d9f1ca8f75b9ce7437781376cab07640d459db67` |
+| CDLM LoRA, 2000 steps (200 steps: `step200/`) | [`Shuibai12138/LLaDA-8B-CDLM-LoRA`](https://huggingface.co/Shuibai12138/LLaDA-8B-CDLM-LoRA) | `84fb1d238fc313e17eb1541dd41d74f719670554` |
+| MDLM LoRA, 2000 steps (200 steps: `step200/`) | [`Shuibai12138/LLaDA-8B-MDLM-LoRA`](https://huggingface.co/Shuibai12138/LLaDA-8B-MDLM-LoRA) | `97cb772d4555a35b33186d2383737fe37abacc89` |
 
 Every script here that takes an adapter accepts a local directory or a Hub id
-`<owner>/<name>[/<subfolder>][@<revision>]` (resolved by `adapter_path.py`). Loaded from the Hub at
-these revisions, without a token, the four adapters reproduce the recorded localisation results of the
-table above exactly (every per-file and pooled value). The adapter files are those the recorded CRB
-sweep loaded; they were not modified after training.
+`<owner>/<name>[/<subfolder>][@<revision>]` (resolved by `adapter_path.py`). Loaded from the Hub
+without a token, the four adapters reproduce the recorded localisation results of the table above
+exactly (every per-file and pooled value); this was checked at the first upload (`eea470e0`,
+`d9f1ca8f`), whose adapter files are the same as at the listed revisions (later commits changed only
+the model cards). The 2000-step adapter files are those the
+recorded CRB sweep and localisation loaded, and the `step200/` files are those the recorded 200-step
+localisation loaded. None of them was modified after training.
 
 ## Files
 
@@ -150,9 +153,9 @@ python training/data_prep/prepare_nemotron_sft_code.py
 
 This places the 78 shards in `data/Nemotron-SFT-Code` under the repo root, which is also this
 launcher's default `DATA_DIR`. The runs reported here read a copy downloaded at Hub revision
-`3f1a5b884d0b890f02ead979ce698dc95debd953`; the script pins
-`af7991c59eeb5e53a98bb6b1ee7a96cc3754eb39`, and the Hub lists the same 78 files
-(`part_000000.parquet` to `part_000077.parquet`) with identical names and sizes at both revisions.
+`af7991c59eeb5e53a98bb6b1ee7a96cc3754eb39`, the revision the script pins (the download metadata of
+all 78 shards records it). The Hub's later revision `3f1a5b884d0b890f02ead979ce698dc95debd953` has
+the same 78 files (`part_000000.parquet` to `part_000077.parquet`) with identical content.
 Point `DATA_DIR` elsewhere if you stored the data somewhere else. The trainer uses every
 `*.parquet` file in that directory, so the data order depends on the shard file names and on the
 number of ranks.
@@ -215,15 +218,17 @@ bash training/llada8b_lora/fetch_crb_inputs.sh
 
 It takes them from the Hub dataset
 [`Shuibai12138/crb-paper-inputs`](https://huggingface.co/datasets/Shuibai12138/crb-paper-inputs) at
-revision `ca450c93cce16e9b21402914ae218324f48d4b5f` (the evaluated files from `llada-8b-base/`,
+revision `a00037635943c930fa5d8e0961c7ca26127ca53f` (the evaluated files from `llada-8b-base/`,
 the raw files from `llada-8b-base-localisation/`) and checks each against `crb_inputs.md5`. No token
 is needed.
 
 - **var and literal instances differ between the two file sets.** The raw var and literal files
   were regenerated after their evaluated files had been made, and the original raw files are lost.
   The localisation evaluation reads the regenerated raw files and the repair sweep reads the
-  evaluated files, so the two measure different var and literal instances (the operator files
-  correspond). This is how the experiment was run; the dataset card has the details.
+  evaluated files, so the two measure only partly the same var and literal instances. In the three
+  HumanEval files the localisation reads, 46 of 136 var and 89 of 155 literal records are identical
+  to evaluated records (all 250 operator records are), so 156 of its 541 records do not occur in the
+  repair inputs. This is how the experiment was run; the dataset card has the details.
 - **Regenerating.** The files were made with the repo's standard pipeline (see
   `examples/test_human-eval_llada.sh`):
 
@@ -252,12 +257,12 @@ is needed.
 ```bash
 # the released adapters
 bash training/llada8b_lora/run_conf_eval.sh outputs/llada8b_lora/full_conf \
-    Shuibai12138/LLaDA-8B-MDLM-LoRA@d9f1ca8f75b9ce7437781376cab07640d459db67 \
-    Shuibai12138/LLaDA-8B-CDLM-LoRA@eea470e0d03e08030fdbdac4c6944431f8ec0c87
+    Shuibai12138/LLaDA-8B-MDLM-LoRA@97cb772d4555a35b33186d2383737fe37abacc89 \
+    Shuibai12138/LLaDA-8B-CDLM-LoRA@84fb1d238fc313e17eb1541dd41d74f719670554
 # the 200-step adapters
 bash training/llada8b_lora/run_conf_eval.sh outputs/llada8b_lora/gate_conf \
-    Shuibai12138/LLaDA-8B-MDLM-LoRA/step200@d9f1ca8f75b9ce7437781376cab07640d459db67 \
-    Shuibai12138/LLaDA-8B-CDLM-LoRA/step200@eea470e0d03e08030fdbdac4c6944431f8ec0c87
+    Shuibai12138/LLaDA-8B-MDLM-LoRA/step200@97cb772d4555a35b33186d2383737fe37abacc89 \
+    Shuibai12138/LLaDA-8B-CDLM-LoRA/step200@84fb1d238fc313e17eb1541dd41d74f719670554
 # adapters you trained yourself
 bash training/llada8b_lora/run_conf_eval.sh outputs/llada8b_lora/full_conf \
     outputs/llada8b_lora/full_mdlm/final outputs/llada8b_lora/full_cdlm/final
@@ -283,8 +288,8 @@ The sweep reads its adapters from `MDLM_ADAPTER` and `CDLM_ADAPTER`, which defau
 `${OUTPUT_DIR}/full_{mdlm,cdlm}/final`. To use the released adapters:
 
 ```bash
-MDLM_ADAPTER=Shuibai12138/LLaDA-8B-MDLM-LoRA@d9f1ca8f75b9ce7437781376cab07640d459db67 \
-CDLM_ADAPTER=Shuibai12138/LLaDA-8B-CDLM-LoRA@eea470e0d03e08030fdbdac4c6944431f8ec0c87 \
+MDLM_ADAPTER=Shuibai12138/LLaDA-8B-MDLM-LoRA@97cb772d4555a35b33186d2383737fe37abacc89 \
+CDLM_ADAPTER=Shuibai12138/LLaDA-8B-CDLM-LoRA@84fb1d238fc313e17eb1541dd41d74f719670554 \
 GPUS="0 1 2 3" bash training/llada8b_lora/run_crb_parallel.sh 1
 ```
 
@@ -323,6 +328,71 @@ python training/llada8b_lora/refine_code_lora.py --lora_adapter outputs/llada8b_
     --confidence_threshold 0.9 --output_prefix g6v_cdlm
 ```
 
+## OpenCodeInstruct adapters
+
+Nemotron-SFT-Code is gated and licensed for internal training only. To make the 8B comparison
+reproducible from public data, both arms were also trained, with the same trainer, flags and seed, on
+[nvidia/OpenCodeInstruct](https://huggingface.co/datasets/nvidia/OpenCodeInstruct) (revision
+`8f3ba5bafe4d6e8db46082cf7ae6741bc370604d`, CC BY 4.0, not gated), rendered by
+`training/data_prep/prepare_opencodeinstruct.py` as `"input: " + input + " output: " + output`. That is
+the script of the 0.5B OpenCodeInstruct reference runs, not of the paper's 0.5B runs, which were
+trained on Nemotron-SFT-Code. **These adapters are not the paper's, and no paper number comes from
+them.**
+
+```bash
+python training/data_prep/prepare_opencodeinstruct.py            # download (6.9 GB) and render (2.7 GB more)
+bash training/llada8b_lora/run_train_opencodeinstruct.sh mdlm    # 4 GPUs; writes outputs/llada8b_lora/oci_mdlm
+bash training/llada8b_lora/run_train_opencodeinstruct.sh cdlm
+```
+
+The launcher links the 50 rendered shards into one directory, writes `data_shards.tsv` (every
+shard, with the rank and position at which it is read) into the run directory, and calls
+`run_train.sh`. The released adapters were trained at commit `96906ed`; later commits changed only
+checks and records of the launcher, not the data or arguments passed to the trainer. On
+4 × A100-PCIE-40GB shared with other jobs, the runs took 50.8 min (MDLM) and 56.1 min (CDLM).
+
+**What a run reads.** As in the Nemotron runs (see [Data loader](#reproducibility-notes)), each
+rank reads the first 3,000 documents of one shard: shards 25, 23, 19 and 11 for ranks 0–3, i.e.
+12,000 documents with 6.58 M tokens (548 per document on average). OpenCodeInstruct's rows are not
+shuffled: within a shard each category comes in long contiguous runs (38 of the 50 shards hold two to
+four categories), and the first 3,000 rows of each of these four shards are all of one category. These
+documents are therefore not a sample of the corpus: 9,000 are
+`generic`/`evol-instruct` and 3,000 `algorithmic`/`self-instruct`, while the corpus is 38.9 %
+`generic`/`evol-instruct`, 33.4 % `generic`/`self-instruct`, 19.6 % `algorithmic`/`self-instruct` and
+8.1 % `algorithmic`/`evol-instruct`. Both arms read the same documents.
+
+| adapter | Hugging Face | revision |
+|---|---|---|
+| CDLM LoRA, OpenCodeInstruct | [`Shuibai12138/LLaDA-8B-CDLM-LoRA-OpenCodeInstruct`](https://huggingface.co/Shuibai12138/LLaDA-8B-CDLM-LoRA-OpenCodeInstruct) | `713278bc1f441641ae9fbb41b71dc87081b3bdad` |
+| MDLM LoRA, OpenCodeInstruct | [`Shuibai12138/LLaDA-8B-MDLM-LoRA-OpenCodeInstruct`](https://huggingface.co/Shuibai12138/LLaDA-8B-MDLM-LoRA-OpenCodeInstruct) | `b68c4c8d8c2512d98f9ab03da3c68eebf5b1d2a1` |
+
+Results with the protocol of [Reported results](#reported-results) (localisation on the HumanEval
+files, n = 541; Pass@1 macro over the 12 cells). The base row is from the same evaluation run as the
+OpenCodeInstruct rows; its localisation values equal the recorded ones exactly, and its Pass@1
+values differ from them only through HumanEval/139 (see [Reproducibility notes](#reproducibility-notes)).
+
+| model (2000 steps) | confidence gap | Top-1 hit (%) | Top-3 hit (%) | Pass@1 T=1, de-fenced | Pass@1 T=1, raw | Pass@1 T=4, de-fenced | Pass@1 T=4, raw |
+|---|---|---|---|---|---|---|---|
+| LLaDA-8B-Base (no fine-tuning) | 0.265 | 16.5 | 54.7 | 55.1 | 55.1 | 59.5 | 59.6 |
+| + MDLM LoRA, OpenCodeInstruct | 0.338 | 10.2 | 73.0 | 57.6 | 54.6 | 59.0 | 52.1 |
+| + CDLM LoRA, OpenCodeInstruct | 0.835 | 59.3 | 90.8 | 74.1 | 51.8 | 72.6 | 50.6 |
+| + MDLM LoRA, Nemotron-SFT-Code (reported above) | 0.402 | 15.2 | 73.4 | 60.0 | 47.5 | 60.9 | 46.0 |
+| + CDLM LoRA, Nemotron-SFT-Code (reported above) | 0.777 | 60.8 | 92.8 | 72.5 | 53.0 | 62.3 | 51.8 |
+
+**Paired comparison.** Over the 3,184 test-failing records, CDLM-OCI repairs more programs than MDLM-OCI: de-fenced +17.0 points (p = 2e-59) at T=1 and +14.5 points (p = 4e-44) at T=4, raw +4.2 points (p = 2e-04) and +4.6 points (p = 2e-05) (pooled difference, exact McNemar test). The raw macro average nevertheless puts CDLM-OCI below MDLM-OCI, because 99.6% of its HumanEval+ completions contain a fence at T=1, so its three raw HumanEval+ cells are close to zero and weigh a quarter of the average. Without HumanEval+, the raw macro Pass@1 at T=1 is 69.1 (CDLM-OCI), 53.8 (MDLM-OCI) and 53.3 (base).
+
+Evaluate them like the Nemotron adapters, with `ARMS` for the repair sweep:
+
+```bash
+bash training/llada8b_lora/fetch_crb_inputs.sh
+SKIP_BASE=1 LABEL_SUFFIX=_oci bash training/llada8b_lora/run_conf_eval.sh outputs/llada8b_lora/oci_conf \
+    Shuibai12138/LLaDA-8B-MDLM-LoRA-OpenCodeInstruct@b68c4c8d8c2512d98f9ab03da3c68eebf5b1d2a1 \
+    Shuibai12138/LLaDA-8B-CDLM-LoRA-OpenCodeInstruct@713278bc1f441641ae9fbb41b71dc87081b3bdad
+ARMS="base:NONE mdlm_oci:Shuibai12138/LLaDA-8B-MDLM-LoRA-OpenCodeInstruct@b68c4c8d8c2512d98f9ab03da3c68eebf5b1d2a1 cdlm_oci:Shuibai12138/LLaDA-8B-CDLM-LoRA-OpenCodeInstruct@713278bc1f441641ae9fbb41b71dc87081b3bdad" \
+    GPUS="0 1 2 3" bash training/llada8b_lora/run_crb_parallel.sh 1
+python training/llada8b_lora/aggregate_crb.py --n_replace 1 --labels base mdlm_oci cdlm_oci
+```
+
 ## Reproducibility notes
 
 - **Evaluation pipeline.** During the experiment, refinement ran against a frozen snapshot of the
@@ -332,7 +402,10 @@ python training/llada8b_lora/refine_code_lora.py --lora_adapter outputs/llada8b_
   LLaDA at `--batch_size 1`. A CPU check compared the repo-level pipeline with the snapshot on
   real CRB inputs, using the real LLaDA tokenizer and a small deterministic stand-in for the
   model. Collation, sampling trajectory, decoded text and history were identical in all 144
-  test cases (72 samples × `--refined_steps` 2 and 5).
+  test cases (72 samples × `--refined_steps` 2 and 5). On GPU, re-running the 24 base cells with
+  the repo-level pipeline and the downloaded inputs reproduced all 6,368 refined programs of the
+  recorded sweep exactly; only the test outcome of HumanEval/139 changed (it times out
+  intermittently), which moves a macro Pass@1 by at most 0.09 points.
 - **Batch size.** Batched bf16 inference is not bit-identical to `--batch_size 1`. Keep
   `--batch_size 1` for every arm. Sharding cells across GPUs does not change any result.
 - **Evaluation noise.** Test execution sometimes times out. Identical inputs have given results
@@ -344,7 +417,10 @@ python training/llada8b_lora/refine_code_lora.py --lora_adapter outputs/llada8b_
   (at most 98 M token positions), made up of 12,000 distinct chunks. Documents are not packed, so
   each chunk is one document here: replaying the data stream of the reported runs gives 12,000
   Nemotron-SFT-Code documents with 3.55 M tokens in total (296 tokens on average, none longer than
-  4096), i.e. 7.1 M token positions processed.
+  4096), i.e. 7.1 M token positions processed. Rank r reads the shards `files[r::4]` of the
+  seed-42 shuffle in turn, from their first row, so all 12,000 documents are the first 3,000 rows
+  of four shards (`part_000047`, `part_000048`, `part_000052`, `part_000008` for ranks 0–3). The
+  200-step runs read the first 300 rows of the same shards: 1,200 documents, 0.37 M tokens.
 - **Determinism.** Launching again with the same world size reproduced the step-1 MDLM loss
   exactly (0.5893).
 

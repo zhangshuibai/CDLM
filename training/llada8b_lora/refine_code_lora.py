@@ -7,7 +7,8 @@ calls) so that, when --lora_adapter is given, the adapter is loaded and merged i
 the bf16 base weights before refinement. Nothing in the repo is modified; the whole
 refinement / remasking / history-dumping code path is byte-identical to the baseline.
 
-Usage is identical to refine_code.py plus `--lora_adapter <path>`. Output paths are
+Usage is identical to refine_code.py plus `--lora_adapter <path>`, where <path> is a local
+adapter directory or a Hub id `<owner>/<name>[@<revision>]` (see adapter_path.py). Output paths are
 built relative to the repo root (the process chdirs there), so pass
 `--initial_results_file` relative to the repo root, e.g. `buggy_datasets/...`.
 """
@@ -56,7 +57,8 @@ def main():
     args = p.parse_args()
 
     if args.lora_adapter:
-        utils.load_model_and_tokenizer = make_lora_loader(os.path.abspath(args.lora_adapter))
+        from adapter_path import resolve_adapter
+        utils.load_model_and_tokenizer = make_lora_loader(resolve_adapter(args.lora_adapter))
 
     os.chdir(REPO)
     import refine_code

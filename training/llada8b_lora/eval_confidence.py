@@ -107,7 +107,8 @@ def summarize(recs):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model_path", default="GSAI-ML/LLaDA-8B-Base")
-    ap.add_argument("--adapter", default=None)
+    ap.add_argument("--adapter", default=None,
+                    help="local adapter directory or Hub id <owner>/<name>[@<revision>]")
     ap.add_argument("--label", required=True)
     ap.add_argument("--data_root", default=os.path.normpath(os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "..", "..", "buggy_datasets")))
@@ -121,7 +122,8 @@ def main():
     args = ap.parse_args()
 
     device = torch.device("cuda")
-    model, tok = load_model(args.model_path, args.adapter, device)
+    from adapter_path import resolve_adapter
+    model, tok = load_model(args.model_path, resolve_adapter(args.adapter), device)
 
     results = {"label": args.label, "adapter": args.adapter, "per_file": {}}
     pooled = []

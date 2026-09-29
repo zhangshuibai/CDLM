@@ -7,6 +7,11 @@
 #   OUTPUT_DIR   [<repo>/outputs/llada8b_lora]  (same default as run_train.sh)
 #   MDLM_ADAPTER [${OUTPUT_DIR}/full_mdlm/final]
 #   CDLM_ADAPTER [${OUTPUT_DIR}/full_cdlm/final]
+#   ARMS         ["base:NONE mdlm:${MDLM_ADAPTER} cdlm:${CDLM_ADAPTER}"]
+#                space-separated <label>:<adapter> pairs; <adapter> is NONE, a local adapter
+#                directory or a Hub id <owner>/<name>[@<revision>]. Outputs of label L go to
+#                <repo>/g6v_L_results. Example (OpenCodeInstruct adapters, base already run):
+#                ARMS="mdlm_oci:outputs/llada8b_lora/oci_mdlm/final cdlm_oci:outputs/llada8b_lora/oci_cdlm/final"
 #   LOG_DIR      [${OUTPUT_DIR}]                 per-GPU logs crb_gpu<N>.log
 #
 # Every cell is independent, so this is scheduling-only: identical numerics to the
@@ -26,12 +31,16 @@ OUTPUT_DIR=${OUTPUT_DIR:-${REPO_ROOT}/outputs/llada8b_lora}
 MDLM=${MDLM_ADAPTER:-${OUTPUT_DIR}/full_mdlm/final}
 CDLM=${CDLM_ADAPTER:-${OUTPUT_DIR}/full_cdlm/final}
 LOG_DIR=${LOG_DIR:-${OUTPUT_DIR}}
+read -r -a ARMS <<< "${ARMS:-base:NONE mdlm:${MDLM} cdlm:${CDLM}}"
 mkdir -p "${LOG_DIR}"
 
 # Build the full cell list: arm x dataset x error_type x steps
 CELLS=()
-for ARM in "base:NONE" "mdlm:${MDLM}" "cdlm:${CDLM}"; do
+for ARM in "${ARMS[@]}"; do
     LABEL="${ARM%%:*}"; ADAPTER="${ARM#*:}"
+    if [ -z "${LABEL}" ] || [ "${LABEL}" = "${ARM}" ] || [ -z "${ADAPTER}" ]; then
+        echo "bad ARMS entry '${ARM}': expected <label>:<adapter|NONE>"; exit 1
+    fi
     for DS in human-eval human-eval+ mbpp mbpp+; do
         for ET in operator var literal; do
             for STEPS in 2 5; do
@@ -41,7 +50,7 @@ for ARM in "base:NONE" "mdlm:${MDLM}" "cdlm:${CDLM}"; do
     done
 done
 
-echo "total cells: ${#CELLS[@]}  (n_replace=${NR}), ${#GPUS[@]}-way parallel over GPUs ${GPUS[*]}"
+echo "total cells: ${#CELLS[@]}  (n_replace=${NR}, arms ${ARMS[*]}), ${#GPUS[@]}-way parallel over GPUs ${GPUS[*]}"
 
 # Round-robin: slot i takes cells i, i+G, i+2G, ... so each GPU runs a serial queue.
 PIDS=()

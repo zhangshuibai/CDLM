@@ -123,9 +123,10 @@ def main():
 
     device = torch.device("cuda")
     from adapter_path import resolve_adapter
-    model, tok = load_model(args.model_path, resolve_adapter(args.adapter), device)
+    adapter_dir = resolve_adapter(args.adapter)
+    model, tok = load_model(args.model_path, adapter_dir, device)
 
-    results = {"label": args.label, "adapter": args.adapter, "per_file": {}}
+    results = {"label": args.label, "adapter": args.adapter, "adapter_dir": adapter_dir, "per_file": {}}
     pooled = []
     for ds in args.datasets:
         for et in args.error_types:

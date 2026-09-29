@@ -8,7 +8,8 @@
 #   MDLM_ADAPTER [${OUTPUT_DIR}/full_mdlm/final]
 #   CDLM_ADAPTER [${OUTPUT_DIR}/full_cdlm/final]
 #   ARMS         ["base:NONE mdlm:${MDLM_ADAPTER} cdlm:${CDLM_ADAPTER}"]
-#                space-separated <label>:<adapter> pairs; <adapter> is NONE, a local adapter
+#                whitespace-separated <label>:<adapter> pairs (so an adapter given here cannot
+#                contain spaces; MDLM_ADAPTER / CDLM_ADAPTER can); <adapter> is NONE, a local adapter
 #                directory or a Hub id <owner>/<name>[/<subfolder>][@<revision>]. Outputs of label L go to
 #                <repo>/g6v_L_results. Example (OpenCodeInstruct adapters, base already run):
 #                ARMS="mdlm_oci:outputs/llada8b_lora/oci_mdlm/final cdlm_oci:outputs/llada8b_lora/oci_cdlm/final"
@@ -31,15 +32,22 @@ OUTPUT_DIR=${OUTPUT_DIR:-${REPO_ROOT}/outputs/llada8b_lora}
 MDLM=${MDLM_ADAPTER:-${OUTPUT_DIR}/full_mdlm/final}
 CDLM=${CDLM_ADAPTER:-${OUTPUT_DIR}/full_cdlm/final}
 LOG_DIR=${LOG_DIR:-${OUTPUT_DIR}}
-read -r -a ARMS <<< "${ARMS:-base:NONE mdlm:${MDLM} cdlm:${CDLM}}"
+if [ -n "${ARMS+x}" ]; then
+    # whitespace (spaces or newlines) separates the entries of a user-supplied ARMS
+    read -r -d '' -a ARMS <<< "${ARMS}" || true
+    if [ "${#ARMS[@]}" -eq 0 ]; then echo "ARMS is set but empty"; exit 1; fi
+else
+    ARMS=("base:NONE" "mdlm:${MDLM}" "cdlm:${CDLM}")
+fi
 mkdir -p "${LOG_DIR}"
 
 # Build the full cell list: arm x dataset x error_type x steps
 CELLS=()
 for ARM in "${ARMS[@]}"; do
     LABEL="${ARM%%:*}"; ADAPTER="${ARM#*:}"
-    if [ -z "${LABEL}" ] || [ "${LABEL}" = "${ARM}" ] || [ -z "${ADAPTER}" ]; then
-        echo "bad ARMS entry '${ARM}': expected <label>:<adapter|NONE>"; exit 1
+    if [ "${LABEL}" = "${ARM}" ] || [ -z "${ADAPTER}" ] || [[ ! "${LABEL}" =~ ^[A-Za-z0-9_.+-]+$ ]] \
+            || [[ "${ADAPTER}" == *"|"* ]]; then
+        echo "bad ARMS entry '${ARM}': expected <label>:<adapter|NONE>, label of letters, digits, _ . + -"; exit 1
     fi
     for DS in human-eval human-eval+ mbpp mbpp+; do
         for ET in operator var literal; do

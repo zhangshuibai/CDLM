@@ -49,18 +49,38 @@ are 59.5 / 60.9 / 62.3 (base / MDLM / CDLM) and the raw means are 59.5 / 46.0 / 
 - **Printed count.** `defence: N/M completions truncated` also counts completions whose only change
   is a stripped trailing newline, so it does not measure how many fences were removed.
 
+## Released adapters
+
+The adapters of the reported runs are on the Hugging Face Hub. Each repository holds the PEFT adapter
+(`adapter_config.json`, `adapter_model.safetensors`), the trainer's `train_config.json` and
+`train_log.json`, and a model card; the 200-step runs are in the `step200/` subfolder.
+
+| adapter | Hugging Face | revision |
+|---|---|---|
+| CDLM LoRA, 2000 steps (200 steps: `step200/`) | [`Shuibai12138/LLaDA-8B-CDLM-LoRA`](https://huggingface.co/Shuibai12138/LLaDA-8B-CDLM-LoRA) | `eea470e0d03e08030fdbdac4c6944431f8ec0c87` |
+| MDLM LoRA, 2000 steps (200 steps: `step200/`) | [`Shuibai12138/LLaDA-8B-MDLM-LoRA`](https://huggingface.co/Shuibai12138/LLaDA-8B-MDLM-LoRA) | `d9f1ca8f75b9ce7437781376cab07640d459db67` |
+
+Every script here that takes an adapter accepts a local directory or a Hub id
+`<owner>/<name>[/<subfolder>][@<revision>]` (resolved by `adapter_path.py`). Loaded from the Hub at
+these revisions, without a token, the four adapters reproduce the recorded localisation results of the
+table above exactly (every per-file and pooled value). The adapter files are those the recorded CRB
+sweep loaded; they were not modified after training.
+
 ## Files
 
 | file | purpose |
 |---|---|
 | `train_llada_mixture.py` | Standalone trainer: HF `AutoModel` + `peft` LoRA + torchrun DDP. The corruption process is `forward_process` (L111) and the loss is `compute_loss` (L170). |
 | `run_train.sh` | Launches one arm with the hyperparameters of the reported runs. |
+| `run_train_opencodeinstruct.sh` | The same launch on the public nvidia/OpenCodeInstruct corpus (see [OpenCodeInstruct adapters](#opencodeinstruct-adapters)). |
 | `refine_code_lora.py` | Wraps the repo-level `refine_code.py`. It loads a LoRA adapter, merges it into the bf16 base and then runs the unchanged CRB refinement. |
+| `adapter_path.py` | Resolves an adapter argument: a local directory or a Hub id with an optional subfolder and revision. |
 | `run_crb_cell.sh` | Runs one CRB cell (arm × dataset × error type × n_replace × steps) on one GPU: refinement, then raw and de-fenced evaluation with the repo-level `evaluate_code.py`. |
-| `run_crb_parallel.sh` | Runs the full 72-cell sweep (3 arms × 4 datasets × 3 error types × {2, 5} steps) with one queue per GPU. |
+| `run_crb_parallel.sh` | Runs the full 72-cell sweep (3 arms × 4 datasets × 3 error types × {2, 5} steps) with one queue per GPU; `ARMS` selects other arms. |
 | `defence.py` | The markdown-fence stripping rule (see above). |
-| `aggregate_crb.py` | Builds the raw and de-fenced Pass@1 tables from the sweep outputs. |
+| `aggregate_crb.py` | Builds the raw and de-fenced Pass@1 tables from the sweep outputs (`--labels` for other arms). |
 | `eval_confidence.py`, `run_conf_eval.sh` | Measure the confidence gap and Top-K localisation hit rate (K = 1..6). |
+| `fetch_crb_inputs.sh`, `crb_inputs.md5` | Download the 24 CRB input files of this experiment and check their md5. |
 | `requirements.txt` | The package versions used for the experiment. |
 
 ## Training objective
@@ -187,30 +207,40 @@ buggy_datasets/<ds>/evaluated/LLaDA-8B-Base_<err>_2_wrong_1_evaluated.jsonl   # 
 ```
 
 Here `<ds>` is one of `human-eval`, `human-eval+`, `mbpp`, `mbpp+` and `<err>` is one of
-`operator`, `var`, `literal`. To create them with the repo's standard pipeline (see
-`examples/test_human-eval_llada.sh`):
+`operator`, `var`, `literal`. Download the exact 24 files of this experiment with
 
 ```bash
-python codecorrection/generate.py --dataset <ds> --error_type <err> --n_replace 1 --data_num 2 \
-    --model_name GSAI-ML/LLaDA-8B-Base --data_path buggy_datasets --deduplicate
-python evaluate_code.py --results_file buggy_datasets/<ds>/LLaDA-8B-Base_<err>_2_wrong_1.jsonl \
-    --output_file buggy_datasets/<ds>/evaluated/LLaDA-8B-Base_<err>_2_wrong_1_evaluated.jsonl \
-    --dataset <ds> --map_prompt2completion --no_postprocess
+bash training/llada8b_lora/fetch_crb_inputs.sh
 ```
 
-**The exact 24 input files of this experiment (the 12 raw files and their 12 `*_evaluated.jsonl`)
-are not yet public. They will be published separately.** Until then:
+It takes them from the Hub dataset
+[`Shuibai12138/crb-paper-inputs`](https://huggingface.co/datasets/Shuibai12138/crb-paper-inputs) at
+revision `ca450c93cce16e9b21402914ae218324f48d4b5f` (the evaluated files from `llada-8b-base/`,
+the raw files from `llada-8b-base-localisation/`) and checks each against `crb_inputs.md5`. No token
+is needed.
 
-- **operator.** The commands above (default seed 42) regenerate the four raw files byte-for-byte
-  (md5 checked for all four datasets). The `*_evaluated.jsonl` files made from them were not
-  compared byte-for-byte.
-- **var and literal.** These cannot be regenerated. They were generated when
+- **var and literal instances differ between the two file sets.** The raw var and literal files
+  were regenerated after their evaluated files had been made, and the original raw files are lost.
+  The localisation evaluation reads the regenerated raw files and the repair sweep reads the
+  evaluated files, so the two measure different var and literal instances (the operator files
+  correspond). This is how the experiment was run; the dataset card has the details.
+- **Regenerating.** The files were made with the repo's standard pipeline (see
+  `examples/test_human-eval_llada.sh`):
+
+  ```bash
+  python codecorrection/generate.py --dataset <ds> --error_type <err> --n_replace 1 --data_num 2 \
+      --model_name GSAI-ML/LLaDA-8B-Base --data_path buggy_datasets --deduplicate
+  python evaluate_code.py --results_file buggy_datasets/<ds>/LLaDA-8B-Base_<err>_2_wrong_1.jsonl \
+      --output_file buggy_datasets/<ds>/evaluated/LLaDA-8B-Base_<err>_2_wrong_1_evaluated.jsonl \
+      --dataset <ds> --map_prompt2completion --no_postprocess
+  ```
+
+  For operator errors these commands (default seed 42) regenerate the four raw files byte-for-byte.
+  The var and literal files cannot be regenerated: they were generated when
   `codecorrection/generate.py` still iterated a Python `set` of strings (`all_elements_text`), so
   the replacements depended on the unrecorded `PYTHONHASHSEED` of those runs. The script now
   iterates in sorted order and gives the same files for a given `--seed` on every run, but those
-  files differ from the ones used here. The var and literal Pass@1 cells, and the localisation
-  numbers, which pool all three error types, are therefore not exactly reproducible from public
-  artifacts yet.
+  files differ from the ones used here. Use the downloaded files to reproduce the numbers.
 - **Hub CRB data.** The `LLaDA_8B_Base` split of
   [`Shuibai12138/crb-datasets`](https://huggingface.co/datasets/Shuibai12138/crb-datasets) is not
   this input set. For HumanEval operator with `n_replace=1` it has 944 rows against the 250 used
@@ -220,12 +250,23 @@ are not yet public. They will be published separately.** Until then:
 ### Localisation (confidence gap, Top-K hit rate)
 
 ```bash
+# the released adapters
+bash training/llada8b_lora/run_conf_eval.sh outputs/llada8b_lora/full_conf \
+    Shuibai12138/LLaDA-8B-MDLM-LoRA@d9f1ca8f75b9ce7437781376cab07640d459db67 \
+    Shuibai12138/LLaDA-8B-CDLM-LoRA@eea470e0d03e08030fdbdac4c6944431f8ec0c87
+# the 200-step adapters
+bash training/llada8b_lora/run_conf_eval.sh outputs/llada8b_lora/gate_conf \
+    Shuibai12138/LLaDA-8B-MDLM-LoRA/step200@d9f1ca8f75b9ce7437781376cab07640d459db67 \
+    Shuibai12138/LLaDA-8B-CDLM-LoRA/step200@eea470e0d03e08030fdbdac4c6944431f8ec0c87
+# adapters you trained yourself
 bash training/llada8b_lora/run_conf_eval.sh outputs/llada8b_lora/full_conf \
     outputs/llada8b_lora/full_mdlm/final outputs/llada8b_lora/full_cdlm/final
 ```
 
 This evaluates base, MDLM and CDLM on HumanEval with `n_replace=1` and all three error types. It
 writes `conf_{base,mdlm,cdlm}.json` with per-file and pooled `gather_gap` and `gather_hit@K`.
+`LABEL_SUFFIX` (e.g. `_oci`) renames the MDLM and CDLM labels and files, and `SKIP_BASE=1` skips the
+base model.
 Any extra arguments are passed on to `eval_confidence.py`, for example
 `--datasets human-eval mbpp` or `--n_replace 1 3`. The `max_*` fields use the
 max-over-vocabulary confidence instead, which gives a different ranking.
@@ -239,13 +280,25 @@ python training/llada8b_lora/aggregate_crb.py --n_replace 1 --out outputs/llada8
 ```
 
 The sweep reads its adapters from `MDLM_ADAPTER` and `CDLM_ADAPTER`, which default to
-`${OUTPUT_DIR}/full_{mdlm,cdlm}/final`. Per-GPU logs go to `${LOG_DIR}/crb_gpu<N>.log`. Refined
-outputs go to `g6v_{base,mdlm,cdlm}_results/` and per-step histories go to
-`g6v_*_history/`, both under the repo root. The histories can be large; you can delete them once
-Pass@1 has been computed.
+`${OUTPUT_DIR}/full_{mdlm,cdlm}/final`. To use the released adapters:
+
+```bash
+MDLM_ADAPTER=Shuibai12138/LLaDA-8B-MDLM-LoRA@d9f1ca8f75b9ce7437781376cab07640d459db67 \
+CDLM_ADAPTER=Shuibai12138/LLaDA-8B-CDLM-LoRA@eea470e0d03e08030fdbdac4c6944431f8ec0c87 \
+GPUS="0 1 2 3" bash training/llada8b_lora/run_crb_parallel.sh 1
+```
+
+`ARMS` replaces the three default arms by a whitespace-separated list of `<label>:<adapter>` pairs
+(`NONE` for the base model); outputs of label `L` go to `g6v_L_results/`, and
+`aggregate_crb.py --labels ...` tabulates them.
+
+Per-GPU logs go to `${LOG_DIR}/crb_gpu<N>.log`. Refined outputs go to
+`g6v_{base,mdlm,cdlm}_results/` and per-step histories go to `g6v_*_history/`, both under the repo
+root. The histories can be large; you can delete them once Pass@1 has been computed.
 
 Finished cells are reused. Each cell directory records the adapter it was produced with in
-`adapter.txt` (`NONE`, a sha256 prefix of the adapter config and weights, or `hub:<id>`). If you
+`adapter.txt` (`NONE`, or a sha256 prefix of the adapter config and weights; a Hub adapter is
+downloaded first and hashed the same way, so it shares outputs with a local copy of the same files). If you
 re-run a label with a different or retrained adapter, the cell stops with
 `!!! STALE ... remove that directory or use another label`; delete `g6v_<label>_results` (or that
 cell's directory) or use a new label. A relative adapter path is taken relative to the directory
@@ -288,7 +341,10 @@ python training/llada8b_lora/refine_code_lora.py --lora_adapter outputs/llada8b_
   that is not sharded across workers. As a result, every packed chunk is yielded twice in a row,
   once by each worker, with independent noise draws. This is what was run for both arms, and it
   is kept unchanged here. 2000 steps therefore process 24,000 chunks of at most 4096 tokens
-  (at most 98 M token positions), made up of 12,000 distinct chunks.
+  (at most 98 M token positions), made up of 12,000 distinct chunks. Documents are not packed, so
+  each chunk is one document here: replaying the data stream of the reported runs gives 12,000
+  Nemotron-SFT-Code documents with 3.55 M tokens in total (296 tokens on average, none longer than
+  4096), i.e. 7.1 M token positions processed.
 - **Determinism.** Launching again with the same world size reproduced the step-1 MDLM loss
   exactly (0.5893).
 

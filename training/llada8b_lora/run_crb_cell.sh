@@ -41,9 +41,6 @@ CT=0.9
 TEMP=0.0
 SETTING="remove_all"
 
-LORA_ARG=()
-if [ "${ADAPTER}" != "NONE" ]; then LORA_ARG=(--lora_adapter "${ADAPTER}"); fi
-
 INIT="buggy_datasets/${DS}/evaluated/LLaDA-8B-Base_${ET}_${DATA_NUM}_wrong_${NR}_evaluated.jsonl"
 [ -f "${INIT}" ] || { echo "SKIP missing ${INIT}"; exit 0; }
 
@@ -52,27 +49,37 @@ RDIR="${PREFIX}_results/refined_steps${STEPS}/${SETTING}/self_conf-remask_vanill
 RES="${RDIR}/${STEM}_results_refined.jsonl"
 STAMP="${RDIR}/adapter.txt"
 
-# Identity of the adapter: NONE, a hash of a local adapter's config and weights, or a Hub id.
+# Identity of the adapter: NONE, or a hash of the adapter's config and weights. A Hub id
+# (<owner>/<name>[/<subfolder>][@<revision>]) is downloaded first and hashed like a local directory,
+# so outputs are tied to the weights actually loaded, whatever the Hub revision points to.
+ADAPTER_DESC="${ADAPTER}"
+if [ "${ADAPTER}" != "NONE" ] && [ ! -d "${ADAPTER}" ]; then
+    RESOLVED="$("${PY}" -c 'import sys; sys.path.insert(0, sys.argv[1]); from adapter_path import resolve_adapter; print(resolve_adapter(sys.argv[2]))' \
+                "${SCRIPT_DIR}" "${ADAPTER}" | tail -n 1)" \
+        || { echo "!!! cannot resolve adapter ${ADAPTER}"; exit 1; }
+    ADAPTER_DESC="${ADAPTER} (${RESOLVED})"
+    ADAPTER="${RESOLVED}"
+fi
 if [ "${ADAPTER}" = "NONE" ]; then
     ADAPTER_ID="NONE"
-elif [ -d "${ADAPTER}" ]; then
+else
     ls "${ADAPTER}"/adapter_config.json "${ADAPTER}"/adapter_model.* >/dev/null 2>&1 \
         || { echo "!!! no adapter_config.json / adapter_model.* in ${ADAPTER}"; exit 1; }
     ADAPTER_ID="sha256:$(cat "${ADAPTER}"/adapter_config.json "${ADAPTER}"/adapter_model.* | sha256sum | cut -c1-16)"
-else
-    ADAPTER_ID="hub:${ADAPTER}"
 fi
+LORA_ARG=()
+if [ "${ADAPTER}" != "NONE" ]; then LORA_ARG=(--lora_adapter "${ADAPTER}"); fi
 
 EVAL_SKIP=(--skip_if_exist)
 if [ -f "${RES}" ]; then
     OLD_ID="$(head -n 1 "${STAMP}" 2>/dev/null)"
     if [ "${OLD_ID}" != "${ADAPTER_ID}" ]; then
-        echo "!!! STALE [${LABEL}] ${RDIR} holds outputs of adapter '${OLD_ID:-unrecorded}', not '${ADAPTER_ID}' (${ADAPTER}); remove that directory or use another label"
+        echo "!!! STALE [${LABEL}] ${RDIR} holds outputs of adapter '${OLD_ID:-unrecorded}', not '${ADAPTER_ID}' (${ADAPTER_DESC}); remove that directory or use another label"
         exit 1
     fi
 else
     # Fresh refinement: record the adapter and do not reuse evaluations of an earlier result file.
-    if ! { mkdir -p "${RDIR}" && printf '%s\n%s\n' "${ADAPTER_ID}" "${ADAPTER}" > "${STAMP}"; }; then
+    if ! { mkdir -p "${RDIR}" && printf '%s\n%s\n' "${ADAPTER_ID}" "${ADAPTER_DESC}" > "${STAMP}"; }; then
         echo "!!! cannot write ${STAMP}"; exit 1
     fi
     EVAL_SKIP=()
@@ -102,7 +109,7 @@ echo "### [${LABEL}] gpu${GPU} ${DS}/${ET}/n${NR} steps=${STEPS} adapter=${ADAPT
     --output_file "${RDIR}/${STEM}_results_refined_evaluated.jsonl" \
     --dataset "${DS}" --no_postprocess \
     --summary_file "${RDIR}/pass_at_1_summary.json" \
-    --summary_metadata "label:${LABEL},dataset:${DS},error_type:${ET},n_replace:${NR},refined_steps:${STEPS},algorithm:${ALGO},confidence_threshold:${CT},temperature:${TEMP},refine_setting:${SETTING},adapter:${ADAPTER}" \
+    --summary_metadata "label:${LABEL},dataset:${DS},error_type:${ET},n_replace:${NR},refined_steps:${STEPS},algorithm:${ALGO},confidence_threshold:${CT},temperature:${TEMP},refine_setting:${SETTING},adapter:${ADAPTER_DESC}" \
     ${EVAL_SKIP[@]+"${EVAL_SKIP[@]}"} \
   || { echo "!!! EVAL FAILED [${LABEL}] ${DS}/${ET}/n${NR}/s${STEPS}"; exit 1; }
 
@@ -115,7 +122,7 @@ DEF="${RDIR}/${STEM}_results_refined_defenced.jsonl"
     --output_file "${RDIR}/${STEM}_results_refined_defenced_evaluated.jsonl" \
     --dataset "${DS}" --no_postprocess \
     --summary_file "${RDIR}/pass_at_1_summary_defenced.json" \
-    --summary_metadata "label:${LABEL},dataset:${DS},error_type:${ET},n_replace:${NR},refined_steps:${STEPS},algorithm:${ALGO},confidence_threshold:${CT},temperature:${TEMP},refine_setting:${SETTING},adapter:${ADAPTER}" \
+    --summary_metadata "label:${LABEL},dataset:${DS},error_type:${ET},n_replace:${NR},refined_steps:${STEPS},algorithm:${ALGO},confidence_threshold:${CT},temperature:${TEMP},refine_setting:${SETTING},adapter:${ADAPTER_DESC}" \
     ${EVAL_SKIP[@]+"${EVAL_SKIP[@]}"} \
   || { echo "!!! EVAL FAILED (de-fenced) [${LABEL}] ${DS}/${ET}/n${NR}/s${STEPS}"; exit 1; }
 

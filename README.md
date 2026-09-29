@@ -136,7 +136,9 @@ You can modify the following parameters in the example scripts:
 | CDLM-0.5B (paper) | [`Shuibai12138/Open-Dcoder-0.5B-mixture-mdm-step2000`](https://huggingface.co/Shuibai12138/Open-Dcoder-0.5B-mixture-mdm-step2000) | `5a7170e7c2333e41d5312c690ac4818722a76c3a` | `e43f9fa6b4cccfc18a2bac8925d64f5a020fa6a6d34db2c801220e22fdf8a680` |
 | MDLM-OCI (reference, **not a paper model**) | [`Shuibai12138/Open-Dcoder-0.5B-MDLM-OpenCodeInstruct`](https://huggingface.co/Shuibai12138/Open-Dcoder-0.5B-MDLM-OpenCodeInstruct) | `535b36930a32109c87986c341bf554cc42e76b2e` | `31521c7d9f5c02fd2d6b4769ae8d99490c4261af0bc5b566d42d0076221067c4` |
 | CDLM-OCI (reference, **not a paper model**) | [`Shuibai12138/Open-Dcoder-0.5B-CDLM-OpenCodeInstruct`](https://huggingface.co/Shuibai12138/Open-Dcoder-0.5B-CDLM-OpenCodeInstruct) | `8eb87fe2ab6850ced7606c8a678c84f1b28fd170` | `3ae362eb296006bcd139234967bcc5503296b7912261fda337b867d44713acd4` |
-| CRB inputs (dataset) | [`Shuibai12138/crb-paper-inputs`](https://huggingface.co/datasets/Shuibai12138/crb-paper-inputs) | `21cae17423b073b152e997746876d6b828b18358` | — |
+| MDLM LoRA on LLaDA-8B-Base (paper) | [`Shuibai12138/LLaDA-8B-MDLM-LoRA`](https://huggingface.co/Shuibai12138/LLaDA-8B-MDLM-LoRA) | `d9f1ca8f75b9ce7437781376cab07640d459db67` | `adapter_model.safetensors`: `d3624ffee3fc46e47da3de6859c92e4f45eadadfc0964b0975dc456b55f1c6ff` |
+| CDLM LoRA on LLaDA-8B-Base (paper) | [`Shuibai12138/LLaDA-8B-CDLM-LoRA`](https://huggingface.co/Shuibai12138/LLaDA-8B-CDLM-LoRA) | `eea470e0d03e08030fdbdac4c6944431f8ec0c87` | `adapter_model.safetensors`: `299109c00eb2938e98518579f81acb75b2c1a4a362e0f3c00ed7f16fa43f3e5d` |
+| CRB inputs (dataset) | [`Shuibai12138/crb-paper-inputs`](https://huggingface.co/datasets/Shuibai12138/crb-paper-inputs) | `ca450c93cce16e9b21402914ae218324f48d4b5f` | — |
 
 - **Paper models.** They are listed under the ids that the CRB launcher accepts, which must contain
   `open-dcoder`. [`Shuibai12138/CDLM-0.5B`](https://huggingface.co/Shuibai12138/CDLM-0.5B)
@@ -150,6 +152,14 @@ You can modify the following parameters in the example scripts:
   number comes from them. CRB Pass@1 at `n_replace = 1` (macro over 12 cells, threshold 0.9) after
   T = 1 and T = 4 refinement steps: CDLM-OCI 0.2196 and 0.3070, MDLM-OCI 0.1401 and 0.2387. See
   [training/README.md](training/README.md#opencodeinstruct-variant).
+- **LLaDA-8B LoRA adapters.** PEFT adapters for
+  [`GSAI-ML/LLaDA-8B-Base`](https://huggingface.co/GSAI-ML/LLaDA-8B-Base)
+  (`0f2787f2d87eac5eed8a087d5ecd24277e6255b2`) from the 8B transfer experiment; each repository also
+  holds the 200-step run in `step200/`. See
+  [training/llada8b_lora/README.md](training/llada8b_lora/README.md#released-adapters).
+- **CRB inputs.** Revision `ca450c93` adds `llada-8b-base-localisation/` (the files the 8B
+  localisation evaluation read) and changes no other file. The 0.5B evaluation pins the earlier
+  revision `21cae17423b073b152e997746876d6b828b18358`, whose files are identical.
 - The ablation checkpoints and the CRB instances are listed in
   [training/README.md](training/README.md#released-checkpoints).
 

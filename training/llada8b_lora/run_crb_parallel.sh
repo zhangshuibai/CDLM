@@ -9,7 +9,7 @@
 #   CDLM_ADAPTER [${OUTPUT_DIR}/full_cdlm/final]
 #   ARMS         ["base:NONE mdlm:${MDLM_ADAPTER} cdlm:${CDLM_ADAPTER}"]
 #                space-separated <label>:<adapter> pairs; <adapter> is NONE, a local adapter
-#                directory or a Hub id <owner>/<name>[@<revision>]. Outputs of label L go to
+#                directory or a Hub id <owner>/<name>[/<subfolder>][@<revision>]. Outputs of label L go to
 #                <repo>/g6v_L_results. Example (OpenCodeInstruct adapters, base already run):
 #                ARMS="mdlm_oci:outputs/llada8b_lora/oci_mdlm/final cdlm_oci:outputs/llada8b_lora/oci_cdlm/final"
 #   LOG_DIR      [${OUTPUT_DIR}]                 per-GPU logs crb_gpu<N>.log

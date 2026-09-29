@@ -1,7 +1,7 @@
 #!/bin/bash
 # G6: confidence-gap + Top-K hit-rate evaluation for base / MDLM / CDLM.
 #   usage: bash run_conf_eval.sh <out_dir> <mdlm_adapter> <cdlm_adapter> [extra args...]
-# An adapter is a local adapter directory or a Hub id <owner>/<name>[@<revision>].
+# An adapter is a local adapter directory or a Hub id <owner>/<name>[/<subfolder>][@<revision>].
 # Environment overrides: CUDA_VISIBLE_DEVICES [0], PYTHON [python],
 #   LABEL_SUFFIX [""]  appended to the mdlm / cdlm labels and file names, e.g. _oci gives
 #                      conf_mdlm_oci.json and conf_cdlm_oci.json

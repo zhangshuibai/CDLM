@@ -108,7 +108,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model_path", default="GSAI-ML/LLaDA-8B-Base")
     ap.add_argument("--adapter", default=None,
-                    help="local adapter directory or Hub id <owner>/<name>[@<revision>]")
+                    help="local adapter directory or Hub id <owner>/<name>[/<subfolder>][@<revision>]")
     ap.add_argument("--label", required=True)
     ap.add_argument("--data_root", default=os.path.normpath(os.path.join(
         os.path.dirname(os.path.abspath(__file__)), "..", "..", "buggy_datasets")))

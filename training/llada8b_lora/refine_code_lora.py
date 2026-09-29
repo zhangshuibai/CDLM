@@ -8,7 +8,7 @@ the bf16 base weights before refinement. Nothing in the repo is modified; the wh
 refinement / remasking / history-dumping code path is byte-identical to the baseline.
 
 Usage is identical to refine_code.py plus `--lora_adapter <path>`, where <path> is a local
-adapter directory or a Hub id `<owner>/<name>[@<revision>]` (see adapter_path.py). Output paths are
+adapter directory or a Hub id `<owner>/<name>[/<subfolder>][@<revision>]` (see adapter_path.py). Output paths are
 built relative to the repo root (the process chdirs there), so pass
 `--initial_results_file` relative to the repo root, e.g. `buggy_datasets/...`.
 """

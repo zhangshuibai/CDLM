@@ -3,9 +3,12 @@ Thin non-invasive wrapper around the repo's `refine_code.py` that can attach a
 LoRA adapter to the base model.
 
 It monkey-patches `utils.load_model_and_tokenizer` (which `refine_code.refine_main`
-calls) so that, when --lora_adapter is given, the adapter is loaded and merged into
-the bf16 base weights before refinement. Nothing in the repo is modified; the whole
-refinement / remasking / history-dumping code path is byte-identical to the baseline.
+calls) so that the base model is loaded from a local snapshot at a pinned revision
+(`--model_revision`, by default adapter_path.BASE_REVISION for GSAI-ML/LLaDA-8B-Base) and,
+when --lora_adapter is given, the adapter is loaded and merged into the bf16 base weights
+before refinement. Nothing in the repo is modified; the whole refinement / remasking /
+history-dumping code path is byte-identical to the baseline, and refine_code still receives
+`--model_name` unchanged.
 
 Usage is identical to refine_code.py plus `--lora_adapter <path>`, where <path> is a local
 adapter directory or a Hub id `<owner>/<name>[/<subfolder>][@<revision>]` (see adapter_path.py). Output paths are
@@ -26,10 +29,15 @@ import utils  # noqa: E402
 _orig_loader = utils.load_model_and_tokenizer
 
 
-def make_lora_loader(adapter_path):
+def make_loader(model_name_arg, base_path, adapter_path):
+    """Loader that reads `model_name_arg` from `base_path` (its pinned local snapshot) and merges
+    `adapter_path` if given. The snapshot path keeps the model name in it, so the loader's
+    LLaDA mask-token routing is unchanged."""
     def loader(model_name, device=None, local_rank=None):
         model, tokenizer, pad_id, mask_id = _orig_loader(
-            model_name, device=device, local_rank=local_rank)
+            base_path if model_name == model_name_arg else model_name, device=device, local_rank=local_rank)
+        if adapter_path is None:
+            return model, tokenizer, pad_id, mask_id
         from peft import PeftModel
         if device is None:
             device = f"cuda:{int(os.environ.get('LOCAL_RANK', 0))}"
@@ -45,6 +53,9 @@ def main():
     p.add_argument("--lora_adapter", type=str, default=None)
     p.add_argument("--initial_results_file", type=str, required=True)
     p.add_argument("--model_name", type=str, default="GSAI-ML/LLaDA-8B-Base")
+    p.add_argument("--model_revision", type=str, default=None,
+                   help="Hub revision of --model_name; default: the pinned revision for "
+                        "GSAI-ML/LLaDA-8B-Base (adapter_path.BASE_REVISION), none otherwise")
     p.add_argument("--batch_size", type=int, default=1)
     p.add_argument("--refined_steps", type=int, default=2)
     p.add_argument("--algorithm", type=str, default="self_conf-remask:vanilla")
@@ -56,9 +67,10 @@ def main():
     p.add_argument("--skip_existing", action="store_true")
     args = p.parse_args()
 
-    if args.lora_adapter:
-        from adapter_path import resolve_adapter
-        utils.load_model_and_tokenizer = make_lora_loader(resolve_adapter(args.lora_adapter))
+    from adapter_path import pinned_base, resolve_adapter
+    utils.load_model_and_tokenizer = make_loader(
+        args.model_name, pinned_base(args.model_name, args.model_revision),
+        resolve_adapter(args.lora_adapter) if args.lora_adapter else None)
 
     os.chdir(REPO)
     import refine_code

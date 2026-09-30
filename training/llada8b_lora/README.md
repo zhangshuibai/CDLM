@@ -77,7 +77,7 @@ localisation loaded. None of them was modified after training.
 | `run_train.sh` | Launches one arm with the hyperparameters of the reported runs. |
 | `run_train_opencodeinstruct.sh` | The same launch on the public nvidia/OpenCodeInstruct corpus (see [OpenCodeInstruct adapters](#opencodeinstruct-adapters)). |
 | `refine_code_lora.py` | Wraps the repo-level `refine_code.py`. It loads a LoRA adapter, merges it into the bf16 base and then runs the unchanged CRB refinement. |
-| `adapter_path.py` | Resolves an adapter argument: a local directory or a Hub id with an optional subfolder and revision. |
+| `adapter_path.py` | Pins the base-model revision (`BASE_REVISION`) and resolves an adapter argument: a local directory or a Hub id with an optional subfolder and revision. |
 | `run_crb_cell.sh` | Runs one CRB cell (arm × dataset × error type × n_replace × steps) on one GPU: refinement, then raw and de-fenced evaluation with the repo-level `evaluate_code.py`. |
 | `run_crb_parallel.sh` | Runs the full 72-cell sweep (3 arms × 4 datasets × 3 error types × {2, 5} steps) with one queue per GPU; `ARMS` selects other arms. |
 | `defence.py` | The markdown-fence stripping rule (see above). |
@@ -122,9 +122,14 @@ masking pattern is identical in both arms.
 `run_train.sh` does not pass `--mixture_prob` or `--noise_token_wt`. The trainer fills them in
 from `--arm`. You can pass them explicitly to `train_llada_mixture.py` to run other values.
 
-The base-model revision is documented but not enforced: the trainer and the evaluation scripts load
-`GSAI-ML/LLaDA-8B-Base` without a revision, i.e. the Hub's current `main`. The trainer's
-`--model_path` also accepts a local snapshot of that revision.
+The trainer (`train_llada_mixture.py`), the localisation script (`eval_confidence.py`) and the
+refinement wrapper (`refine_code_lora.py`) load `GSAI-ML/LLaDA-8B-Base` at revision
+`0f2787f2d87eac5eed8a087d5ecd24277e6255b2` (`adapter_path.BASE_REVISION`), so neither the weights
+nor the model's remote code can change under a run. This revision has been the Hub's `main` since
+2025-10-21; every reported run loaded it, and all six released adapters record it in
+`adapter_config.json`. `--model_revision` selects another revision; a local directory passed as
+`--model_path` / `--model_name` is used as is. The pin was added in `v1.0.3-corrective-training`;
+earlier tags loaded the Hub's current `main`, which was the same revision.
 
 This LR schedule is the 8B experiment's own. It does not reproduce the 0.5B runs, which were
 still in linear warmup at step 2000. The schedule is identical in both 8B arms.
@@ -347,8 +352,9 @@ bash training/llada8b_lora/run_train_opencodeinstruct.sh cdlm
 
 The launcher links the 50 rendered shards into one directory, writes `data_shards.tsv` (every
 shard, with the rank and position at which it is read) into the run directory, and calls
-`run_train.sh`. The released adapters were trained at commit `96906ed`; later commits changed only
-checks and records of the launcher, not the data or arguments passed to the trainer. On
+`run_train.sh`. The released adapters were trained at commit `96906ed`. Later commits added checks
+and records to the launcher and pinned the base-model revision that the runs already loaded; the data
+and the training arguments are unchanged. On
 4 × A100-PCIE-40GB shared with other jobs, the runs took 50.8 min (MDLM) and 56.1 min (CDLM).
 
 **What a run reads.** As in the Nemotron runs (see [Data loader](#reproducibility-notes)), each

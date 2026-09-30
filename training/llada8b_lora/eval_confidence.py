@@ -35,11 +35,11 @@ MASK_ID = 126336
 MAX_K = 6
 
 
-def load_model(model_path, adapter, device):
+def load_model(model_path, adapter, device, revision=None):
     from transformers import AutoModel, AutoTokenizer
-    tok = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+    tok = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True, revision=revision)
     model = AutoModel.from_pretrained(model_path, trust_remote_code=True,
-                                      dtype=torch.bfloat16)
+                                      dtype=torch.bfloat16, revision=revision)
     if adapter:
         from peft import PeftModel
         model = PeftModel.from_pretrained(model, adapter, dtype=torch.bfloat16)
@@ -107,6 +107,9 @@ def summarize(recs):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model_path", default="GSAI-ML/LLaDA-8B-Base")
+    ap.add_argument("--model_revision", default=None,
+                    help="Hub revision of --model_path; default: the pinned revision for "
+                         "GSAI-ML/LLaDA-8B-Base (adapter_path.BASE_REVISION), none otherwise")
     ap.add_argument("--adapter", default=None,
                     help="local adapter directory or Hub id <owner>/<name>[/<subfolder>][@<revision>]")
     ap.add_argument("--label", required=True)
@@ -122,11 +125,13 @@ def main():
     args = ap.parse_args()
 
     device = torch.device("cuda")
-    from adapter_path import resolve_adapter
+    from adapter_path import base_revision, resolve_adapter
+    revision = base_revision(args.model_path, args.model_revision)
     adapter_dir = resolve_adapter(args.adapter)
-    model, tok = load_model(args.model_path, adapter_dir, device)
+    model, tok = load_model(args.model_path, adapter_dir, device, revision)
 
-    results = {"label": args.label, "adapter": args.adapter, "adapter_dir": adapter_dir, "per_file": {}}
+    results = {"label": args.label, "model_path": args.model_path, "model_revision": revision,
+               "adapter": args.adapter, "adapter_dir": adapter_dir, "per_file": {}}
     pooled = []
     for ds in args.datasets:
         for et in args.error_types:

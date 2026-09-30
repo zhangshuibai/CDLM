@@ -213,6 +213,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--arm", required=True, choices=["mdlm", "cdlm"])
     ap.add_argument("--model_path", default="GSAI-ML/LLaDA-8B-Base")
+    ap.add_argument("--model_revision", default=None,
+                    help="Hub revision of --model_path; default: the pinned revision for "
+                         "GSAI-ML/LLaDA-8B-Base (adapter_path.BASE_REVISION), none otherwise")
     ap.add_argument("--data_dir", required=True)
     ap.add_argument("--output_dir", required=True)
     ap.add_argument("--max_steps", type=int, default=2000)
@@ -264,10 +267,13 @@ def main():
 
     from transformers import AutoModel, AutoTokenizer
     from peft import LoraConfig, get_peft_model
+    from adapter_path import base_revision
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model_path, trust_remote_code=True)
+    args.model_revision = base_revision(args.model_path, args.model_revision)
+    tokenizer = AutoTokenizer.from_pretrained(args.model_path, trust_remote_code=True,
+                                              revision=args.model_revision)
     model = AutoModel.from_pretrained(args.model_path, trust_remote_code=True,
-                                      dtype=torch.bfloat16)
+                                      dtype=torch.bfloat16, revision=args.model_revision)
     vocab_size = model.config.vocab_size  # 126464 (== embedding_size)
 
     # activation checkpointing (LLaDA custom API), set before PEFT wrapping

@@ -29,13 +29,16 @@ import utils  # noqa: E402
 _orig_loader = utils.load_model_and_tokenizer
 
 
-def make_loader(model_name_arg, base_path, adapter_path):
-    """Loader that reads `model_name_arg` from `base_path` (its pinned local snapshot) and merges
-    `adapter_path` if given. The snapshot path keeps the model name in it, so the loader's
-    LLaDA mask-token routing is unchanged."""
+def make_loader(model_name_arg, revision, adapter_path):
+    """Loader that reads `model_name_arg` from its local snapshot at the pinned revision and merges
+    `adapter_path` if given. The snapshot is resolved only when refine_code actually loads the
+    model, so cells skipped by --skip_existing need neither the Hub nor the cached base model.
+    The snapshot path keeps the model name in it, so the loader's LLaDA mask-token routing is
+    unchanged."""
     def loader(model_name, device=None, local_rank=None):
-        model, tokenizer, pad_id, mask_id = _orig_loader(
-            base_path if model_name == model_name_arg else model_name, device=device, local_rank=local_rank)
+        from adapter_path import pinned_base
+        path = pinned_base(model_name, revision) if model_name == model_name_arg else model_name
+        model, tokenizer, pad_id, mask_id = _orig_loader(path, device=device, local_rank=local_rank)
         if adapter_path is None:
             return model, tokenizer, pad_id, mask_id
         from peft import PeftModel
@@ -67,9 +70,9 @@ def main():
     p.add_argument("--skip_existing", action="store_true")
     args = p.parse_args()
 
-    from adapter_path import pinned_base, resolve_adapter
+    from adapter_path import resolve_adapter
     utils.load_model_and_tokenizer = make_loader(
-        args.model_name, pinned_base(args.model_name, args.model_revision),
+        args.model_name, args.model_revision,
         resolve_adapter(args.lora_adapter) if args.lora_adapter else None)
 
     os.chdir(REPO)

@@ -265,8 +265,11 @@ whose path contains `open-dcoder`. Don't pass `Shuibai12138/CDLM-0.5B`.
 The `LLaDA_8B_Base` split of `crb-datasets` is not the input set of the LLaDA-8B experiment; see
 [`llada8b_lora/README.md`](llada8b_lora/README.md#crb-inputs).
 
-Not released: the seed-study checkpoints, the LLaDA-8B LoRA adapters, the Sudoku checkpoints, and
-α = 0.9999, for which the sweep script accepts the value but no model was uploaded.
+The LLaDA-8B LoRA adapters (the paper's pair with its 200-step runs, and an OpenCodeInstruct pair)
+are listed in [`llada8b_lora/README.md`](llada8b_lora/README.md#released-adapters).
+
+Not released: the seed-study checkpoints, the Sudoku checkpoints, and α = 0.9999, for which the
+sweep script accepts the value but no model was uploaded.
 
 ### OpenCodeInstruct reference checkpoints
 

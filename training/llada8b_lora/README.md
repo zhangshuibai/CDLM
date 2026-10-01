@@ -84,7 +84,8 @@ localisation loaded. None of them was modified after training.
 | `aggregate_crb.py` | Builds the raw and de-fenced Pass@1 tables from the sweep outputs (`--labels` for other arms). |
 | `eval_confidence.py`, `run_conf_eval.sh` | Measure the confidence gap and Top-K localisation hit rate (K = 1..6). |
 | `fetch_crb_inputs.sh`, `crb_inputs.md5` | Download the 24 CRB input files of this experiment and check their md5. |
-| `requirements.txt` | The package versions used for the experiment. |
+| `codegen_guard.py`, `run_codegen_guard.sh` | From-scratch code generation on HumanEval+ and MBPP+ (pass@1), a guard metric next to CRB (see [Code-generation guard](#code-generation-guard)). |
+| `requirements.txt`, `constraints.txt` | The package versions used for the experiment: the direct requirements, and every dependency pinned. |
 
 ## Training objective
 
@@ -146,8 +147,14 @@ about 1 h 50 min. The localisation evaluation takes about a minute per model on 
 ## Setup
 
 ```bash
-pip install -r training/llada8b_lora/requirements.txt
+pip install torch==2.5.0 --index-url https://download.pytorch.org/whl/cu124
+pip install -r training/llada8b_lora/requirements.txt -c training/llada8b_lora/constraints.txt
 ```
+
+`constraints.txt` pins every dependency to the version of the environment that produced the
+released adapters and every 8B number (Python 3.11.13). Without it, pip installs the newest
+versions of the unpinned dependencies; with `filelock` 3.32.3, for example, the `code_eval` metric
+failed when it forked its test workers.
 
 Nemotron-SFT-Code is a gated dataset. Accept its licence on the Hugging Face page, log in with
 `huggingface-cli login`, and download it with the shared script used by the 0.5B runs (about 59 GB):
@@ -332,6 +339,65 @@ python training/llada8b_lora/refine_code_lora.py --lora_adapter outputs/llada8b_
     --algorithm self_conf-remask:vanilla --temperature 0.0 --refine_setting remove_all \
     --confidence_threshold 0.9 --output_prefix g6v_cdlm
 ```
+
+## Code-generation guard
+
+CRB measures repair. To check that post-training keeps the model's ability to write programs from
+scratch, `codegen_guard.py` scores LLaDA-8B-Base, with or without an adapter, on the 164 HumanEval+ and
+378 MBPP+ problems. This evaluation is not in the paper; it mirrors the 0.5B code-generation evaluation
+(`evaluation/codegen/`) with a deterministic decoder.
+
+| | |
+|---|---|
+| Benchmarks, prompts, stop sequences | the vendored lm-evaluation-harness tasks `humaneval_plus` and `mbpp_plus` of the 0.5B evaluation, loaded at its pinned dataset revisions and checked against its pinned input digests (`evaluation/codegen/inputs/INPUTS.json`) |
+| Tests | `humaneval_plus`: the EvalPlus HumanEval+ tests. `mbpp_plus`: the task's own targets, i.e. the first three original MBPP asserts of each problem, which the prompt shows (as in the 0.5B evaluation; not comparable with EvalPlus MBPP+ numbers); the EvalPlus plus tests (`test_imports` + `test`) are scored too and reported as `pass@1_plus_tests` |
+| Code extraction | the tasks' own `create_test` filter. The `humaneval_plus` filter already applies the harness's AST sanitizer (`lm_eval/tasks/humaneval/sanitize.py`: longest syntactically valid snippet, then only imports, classes, functions with a return and assignments); the `mbpp_plus` filter only deletes code fences, so the guard also applies the harness's identical `lm_eval/tasks/mbpp/sanitize.py` (no entry point) after it. The score of the task filter alone, the 0.5B protocol, is reported as `pass@1_task_filter` |
+| Metric | pass@1 of the HF `code_eval` metric pinned by `evaluation/codegen/MANIFEST.md5`, one sample per problem, mean over problems, 20 s timeout per problem (the metric's 3 s default times out on some HumanEval+ test suites even for the canonical solution, depending on load) |
+| Decoder | the repository's sampler (`llada_sample.llada_sample`): the prompt (no special tokens) followed by 128 mask tokens, 128 steps of `self_conf-remask:vanilla` with the linear schedule (every step predicts all masked positions greedily, then masks again the lowest-confidence fraction of the 128 positions that the schedule gives), temperature 0. The generated tokens are cut at the first `<|endoftext|>` (the base model ends the program with it and starts an unrelated document in the remaining positions), decoded without special tokens, and cut at each of the task's stop sequences |
+| Base model | `GSAI-ML/LLaDA-8B-Base` at the pinned revision, LoRA merged in bf16 |
+| Batch size | 1, so the programs do not depend on the number of GPUs or the sharding |
+
+```bash
+# the base model and the CDLM-OCI adapter, each sharded over GPUs 0-3
+bash training/llada8b_lora/run_codegen_guard.sh NONE outputs/llada8b_lora/guard/base 0,1,2,3
+bash training/llada8b_lora/run_codegen_guard.sh \
+    Shuibai12138/LLaDA-8B-CDLM-LoRA-OpenCodeInstruct@713278bc1f441641ae9fbb41b71dc87081b3bdad \
+    outputs/llada8b_lora/guard/cdlm_oci 0,1,2,3
+# spot check: the first 5 problems of every shard
+LIMIT=5 bash training/llada8b_lora/run_codegen_guard.sh NONE outputs/llada8b_lora/guard/spot 0
+```
+
+Each run writes `<task>/samples.jsonl` (generated token ids in the shard files, raw and filtered response,
+pass/fail and the execution result per problem) and `summary.json` (scores, inputs and metric checks, model
+and adapter identity, generation protocol and code digests). A finished run is reused only for the same
+adapter weights, `LIMIT` and GPU count. The generated code is executed; run the guard in an isolated
+environment.
+
+Results (pass@1, %; 164 HumanEval+ and 378 MBPP+ problems; one greedy sample each):
+
+| model | HumanEval+ pass@1 | MBPP+ pass@1 | MBPP+ plus tests | MBPP+ task filter only |
+|---|---|---|---|---|
+| LLaDA-8B-Base (no fine-tuning) | 28.0 | 52.9 | 44.7 | 38.1 |
+| + MDLM LoRA, OpenCodeInstruct | 12.8 | 35.2 | 29.4 | 29.4 |
+| + CDLM LoRA, OpenCodeInstruct | 9.1 | 31.5 | 24.9 | 31.5 |
+| + MDLM LoRA, Nemotron-SFT-Code (paper) | 7.3 | 27.0 | 19.6 | 20.6 |
+| + CDLM LoRA, Nemotron-SFT-Code (paper) | 7.3 | 24.6 | 19.6 | 21.7 |
+
+| paired difference, points (exact McNemar p) | HumanEval+ | MBPP+ | MBPP+ plus tests |
+|---|---|---|---|
+| CDLM-OCI vs MDLM-OCI | -3.7 (p = 0.3) | -3.7 (p = 0.2) | -4.5 (p = 0.08) |
+| MDLM-OCI vs base | -15.2 (p = 4e-05) | -17.7 (p = 1e-10) | -15.3 (p = 1e-09) |
+| CDLM-OCI vs base | -18.9 (p = 3e-07) | -21.4 (p = 5e-15) | -19.8 (p = 8e-15) |
+| CDLM vs MDLM (Nemotron) | +0.0 (p = 1) | -2.4 (p = 0.4) | +0.0 (p = 1) |
+| MDLM (Nemotron) vs base | -20.7 (p = 5e-09) | -25.9 (p = 8e-18) | -25.1 (p = 8e-20) |
+| CDLM (Nemotron) vs base | -20.7 (p = 1e-09) | -28.3 (p = 1e-21) | -25.1 (p = 2e-19) |
+
+Post-training on either corpus lowers from-scratch generation for both objectives, by 15 to 28 points on
+HumanEval+, MBPP+ and the MBPP+ plus tests. The corrective objective costs nothing measurable relative to the absorbing-only control on the same
+data: no difference between CDLM and MDLM is significant. The guard is therefore a relative constraint
+against the trained baseline, not against the base model. Across the five runs, 1 to 4 problems per task hit
+the 20 s timeout and no mask token remained in any output; the base model ends 35 of 164 HumanEval+ and 215 of
+378 MBPP+ programs with `<|endoftext|>` within the 128 tokens, every adapter all but at most two.
 
 ## OpenCodeInstruct adapters
 

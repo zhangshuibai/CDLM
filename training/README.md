@@ -30,6 +30,7 @@ submission.
 | `requirements.txt` | Pinned environment for the 0.5B runs. |
 | `constraints.txt` | Full `pip freeze` of a verified 0.5B training environment, used with `pip install -c`. |
 | `LICENSE`, `NOTICE` | Apache-2.0 license and attribution for the code derived from VeOmni / Open-dLLM. |
+| `corrected_gradient/` | Results of retraining four 0.5B models with `CDLM_TORCH_CE=chunked` ([Effective gradient](#effective-gradient)). |
 | `PATCH_vs_Open-dLLM-5b9ba4d.diff` | The complete difference between this snapshot and the public Open-dLLM at commit 5b9ba4d (9 files). Applying it to that commit reproduces `veomni/` and `tasks/train_torch.py` exactly. The other upstream entry points (`tasks/infer.py`, `tasks/omni/`) are not shipped. |
 
 ## Objective as implemented
@@ -137,85 +138,20 @@ micro-batch. The implementation, not Eq. (1), is authoritative for all reported 
 
 ### Effective gradient
 
-The loss values above are computed correctly, but the gradient of the 0.5B trainer is not the
-gradient of L.
+The 0.5B trainer computes the per-position cross-entropies with liger-kernel 0.5.8's
+`LigerFusedLinearCrossEntropyLoss(reduction="none")`. Its forward values are correct, so the logged
+loss is L. Its backward, however, scales every position's gradient by the upstream gradient of the
+micro-batch's first row (row 0, labelled or not), so the per-token weights of L are not applied: a
+micro-batch whose first row has weight 0 contributes no gradient, and clean visible positions can receive gradient
+through the "noise" term. Every released 0.5B checkpoint was trained this way. The LLaDA-8B LoRA and
+Sudoku trainers (next section) and all evaluation code are not affected.
 
-**What the code computes.** `Qwen2ForCausalLM.forward` computes the per-position cross-entropies
-with liger-kernel's `LigerFusedLinearCrossEntropyLoss(reduction="none")` (liger-kernel 0.5.8, the
-version in `requirements.txt`), in two calls:
-
-| Call | Positions labelled | Terms | Intended weight w_i of ℓ_i in L |
-| --- | --- | --- | --- |
-| 1 | S | "mdm", "path" | (1 + sg(exp(−ℓ_i))/t_i) / \|S\| |
-| 2 | all valid positions (every position except the first token of each packed chunk): masked, replaced and clean | "noise", "clean" | `noise_token_wt`/\|N\| on N, `clean_token_wt`/\|C\| on C, 0 on masked positions |
-
-Call 2 is part of the graph only when the noise or the clean term is included, and every weight is
-also divided by the number of gradient-accumulation steps. In liger-kernel 0.5.8, this function
-computes each position's gradient during the forward pass. Its backward then multiplies all of them
-by one scalar, the upstream gradient of row 0 (`grad_output` is read as a scalar), and ignores the
-upstream gradients of all other rows. Row 0 is the first position of the shifted micro-batch, whose
-target is the micro-batch's second token. Each call therefore contributes
-
-```
-w_0 · Σ_{i∈T} ∇ℓ_i        instead of        Σ_{i∈T} w_i · ∇ℓ_i
-```
-
-where T is the call's set of labelled positions and w_0 is the intended weight of row 0 in that
-call (0 when row 0 is not labelled there or has weight 0).
-
-**Minimal test.** On random data with 64 positions, the liger forward losses equal torch's within
-1e-6. With per-token weights w and w_0 > 0, the liger gradient equals w_0 · ∇(Σ_i ℓ_i) to a
-relative error of 4e-8, while the correct gradient Σ_i w_i ∇ℓ_i, computed with torch, differs from
-it by 87%. With w_0 = 0, the liger gradient is exactly zero.
-
-**Consequences for the 0.5B runs.**
-
-- **The per-token weights are not applied.** Within a call, every labelled position gets the same
-  weight. The factors 1/|S|, 1/t_i (path), `noise_token_wt`/|N| and `clean_token_wt`/|C| reach
-  the gradient only through w_0, as one scale factor per micro-batch and call.
-- **Some micro-batches have zero gradient.** When row 0 is a clean visible token and
-  `clean_token_wt` = 0, w_0 = 0 in both calls, and the micro-batch contributes exactly zero
-  gradient. Row 0 is clean with probability (1 − t)(1 − α), with t the mask ratio of its chunk,
-  i.e. 0.5 · (1 − α) on average: 0.45 for CDLM, 0.5 for MDLM.
-  An optimizer step combines 4 micro-batches (4 GPUs × accumulation 1, or 2 GPUs × accumulation
-  2), so about 0.45⁴ ≈ 4% (CDLM) and 0.5⁴ ≈ 6% (MDLM) of optimizer steps have exactly zero
-  gradient. They appear in the logs as `grad_norm` 0 with a nonzero loss. In the two
-  OpenCodeInstruct reference runs, this happened at 82 of 2,010 logged steps (CDLM) and 133 of
-  2,003 (MDLM). `optimizer.step()` still runs on those steps, so AdamW's moment estimates and
-  weight decay still change the weights.
-- **Other positions receive gradient through the noise term.** When row 0 is a replaced token,
-  call 2 adds `noise_token_wt`/|N| times the gradient sum over all valid positions, including the
-  clean visible and the masked ones. So clean visible tokens receive gradient in the CDLM runs,
-  although `clean_token_wt` = 0. In the CDLM + ctw run, a clean row 0 likewise adds
-  `clean_token_wt`/|C| times the same sum, so that run has no zero-gradient micro-batches of the
-  kind above.
-- **MDLM.** Only call 1 is in the graph. The gradient is (1 + exp(−ℓ_0)/t_0)/|S| · Σ_{i∈S} ∇ℓ_i
-  when row 0 is masked, and zero otherwise.
-
-**What is affected.** Every 0.5B run of this directory is affected: CDLM-0.5B and MDLM-0.5B, the α
-sweep, CDLM + ctw, the seed study and the two OpenCodeInstruct reference checkpoints. The released
-0.5B checkpoints, and the models behind the paper's 0.5B results, were trained with this effective
-gradient. The same pattern (`reduction="none"` followed by a weighted sum) is in the upstream
-Open-dLLM MDLM loss (`Open-dLLM/veomni/models/transformers/qwen2/modeling_qwen2.py`) and in this
-snapshot's `qwen3/modeling_qwen3.py`, which no run uses.
-
-**What is not affected.**
-- The LLaDA-8B LoRA trainer (`llada8b_lora/train_llada_mixture.py`) and the Sudoku trainer
-  (`sudoku/train.py`) use torch's `F.cross_entropy`, whose backward applies each position's upstream
-  gradient.
-- Evaluation (CRB and code generation) runs forward passes only.
-- The logged loss and its components are the forward values, so they are the L above.
-- Bitwise reproduction of the released runs (the step-1 and step-2 checks and the step-2001 replay
-  under [Provenance](#provenance-of-cdlm-05b-and-mdlm-05b)) is unaffected. The trainer is left
-  unchanged so that it keeps reproducing the released checkpoints.
-
-**For new work.** To train with the per-token weighting as written, you have two options:
-- compute the `reduction="none"` losses with torch's cross-entropy, i.e. logits from `lm_head`, then
-  `torch.nn.functional.cross_entropy(..., reduction="none")`, chunked if memory requires;
-- use a liger-kernel version whose backward applies a per-position upstream gradient (not tested
-  here).
-
-Either change alters the gradients, so it breaks bitwise reproduction of the released checkpoints.
+Setting `CDLM_TORCH_CE=chunked` computes the same per-position losses with PyTorch's cross-entropy,
+chunk by chunk of rows (`CDLM_CE_CHUNK_ROWS`, default 2048), so autograd applies every weight;
+`full` does the same in one piece and runs out of memory at micro batch 3 × 4096 on 40 GB GPUs. The
+switch is off by default, so the reproduction checks under
+[Provenance](#provenance-of-cdlm-05b-and-mdlm-05b) are unchanged. Results of retraining with it are in
+[`corrected_gradient/README.md`](corrected_gradient/README.md).
 
 ### 8B and Sudoku
 
@@ -337,7 +273,7 @@ the 12 dataset × error-type cells:
   `save_time_interval_minutes` (170 → 0), `eval_every` (1000 → 0) and `eval_before_train`
   (true → false). The original `train_path` was one directory read in `os.listdir` order; the
   launcher uses the recorded order instead (see [Data](#data)).
-- **Not retrained.** No 2000-step run of the release scripts has been compared with CDLM-0.5B or
+- **Not retrained.** No 2000-step run of the release scripts with the default (liger) gradient has been compared with CDLM-0.5B or
   MDLM-0.5B.
 
 ## Environment
@@ -572,6 +508,8 @@ The `scripts/` launchers read these environment variables:
 | `WANDB_MODE` | `offline`, `online` or `disabled` | `offline` |
 | `WANDB_PROJECT` | W&B project | `Qwen2.5-Coder-0.5B` (`train_0.5b.sh`), `mixture_ablation` (the other two) |
 | `WANDB_ENTITY` | W&B entity | unset: the account's default entity |
+| `CDLM_TORCH_CE` | `chunked` (or `full`): per-token cross-entropy with a correct gradient ([Effective gradient](#effective-gradient)); unset: liger-kernel, as in the released runs | unset |
+| `CDLM_CE_CHUNK_ROWS` | rows per chunk when `CDLM_TORCH_CE=chunked` | 2048 |
 
 `train_0.5b.sh` additionally takes:
 

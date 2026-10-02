@@ -88,6 +88,78 @@ if is_liger_kernel_available():
 
 logger = logging.get_logger(__name__)
 
+
+# ---------------------------------------------------------------------------------------------
+# Opt-in per-token cross-entropy with a correct backward (training/README.md#effective-gradient).
+# It replaces the two gradient-carrying LigerFusedLinearCrossEntropyLoss(reduction="none") calls in
+# Qwen2ForCausalLM.forward, whose backward does not apply the per-token weights of the loss.
+#
+#   CDLM_TORCH_CE unset / "0"  -> liger-kernel, as in every released 0.5B run (default, unchanged)
+#   CDLM_TORCH_CE = "full"     -> logits = lm_head(h) on all rows, then
+#                                 F.cross_entropy(logits.float(), labels, reduction="none",
+#                                 ignore_index=IGNORE_INDEX)
+#   CDLM_TORCH_CE = "chunked"  -> the same computation, chunk by chunk of rows, each chunk under
+#                                 torch.utils.checkpoint, so the full [rows x vocab] fp32 logits never
+#                                 sit in memory at once (needed at micro batch 3 x 4096 on 40 GB GPUs).
+#   CDLM_CE_CHUNK_ROWS (default 2048) sets the chunk size of "chunked".
+#
+# Both torch modes are differentiated by autograd. The no-grad diagnostic call (noise_conf /
+# clean_conf) stays on liger: it only produces logged values. Results of retraining with
+# "chunked": training/corrected_gradient/README.md.
+# ---------------------------------------------------------------------------------------------
+import os as _os
+import torch.utils.checkpoint  # noqa: E402
+
+_CDLM_TORCH_CE_MODE = _os.environ.get("CDLM_TORCH_CE", "0").strip().lower()
+if _CDLM_TORCH_CE_MODE in ("", "0", "false", "off", "liger"):
+    _CDLM_TORCH_CE_MODE = "liger"
+if _CDLM_TORCH_CE_MODE not in ("liger", "full", "chunked"):
+    raise ValueError(f"CDLM_TORCH_CE must be unset/0, 'full' or 'chunked' (got {_CDLM_TORCH_CE_MODE!r})")
+_CDLM_CE_CHUNK_ROWS = int(_os.environ.get("CDLM_CE_CHUNK_ROWS", "2048"))
+logger.info_rank0(f"Per-token CE mode for the gradient-carrying calls: {_CDLM_TORCH_CE_MODE}"
+                  f" (CDLM_CE_CHUNK_ROWS={_CDLM_CE_CHUNK_ROWS})")
+
+
+def _torch_ce_rows(hidden: torch.Tensor, weight: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+    logits = nn.functional.linear(hidden, weight)
+    return nn.functional.cross_entropy(logits.float(), labels, reduction="none", ignore_index=IGNORE_INDEX)
+
+
+class TorchPerTokenCrossEntropy:
+    """Call-compatible stand-in for LigerFusedLinearCrossEntropyLoss(reduction="none"):
+    __call__(lm_head_weight, hidden_states_flat, labels) -> per-row fp32 cross-entropy."""
+
+    def __init__(self, mode: str, chunk_rows: int = 2048):
+        assert mode in ("full", "chunked")
+        self.mode = mode
+        self.chunk_rows = chunk_rows
+
+    def __call__(self, weight: torch.Tensor, hidden: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+        if self.mode == "full" or not torch.is_grad_enabled():
+            return _torch_ce_rows(hidden, weight, labels)
+        out = []
+        for start in range(0, hidden.size(0), self.chunk_rows):
+            end = min(start + self.chunk_rows, hidden.size(0))
+            out.append(
+                torch.utils.checkpoint.checkpoint(
+                    _torch_ce_rows,
+                    hidden[start:end],
+                    weight,
+                    labels[start:end],
+                    use_reentrant=False,
+                    preserve_rng_state=False,
+                )
+            )
+        return torch.cat(out, dim=0)
+
+
+def _make_grad_ce():
+    """Factory for the two gradient-carrying per-token CE calls."""
+    if _CDLM_TORCH_CE_MODE == "liger":
+        return LigerFusedLinearCrossEntropyLoss(reduction="none", ignore_index=IGNORE_INDEX)
+    return TorchPerTokenCrossEntropy(_CDLM_TORCH_CE_MODE, _CDLM_CE_CHUNK_ROWS)
+
+
 _CHECKPOINT_FOR_DOC = "meta-qwen2/Qwen2-2-7b-hf"
 _CONFIG_FOR_DOC = "Qwen2Config"
 
@@ -1040,7 +1112,7 @@ class Qwen2ForCausalLM(Qwen2PreTrainedModel,  MDMGenerationMixin):
             labels = labels.view(-1)  # flatten label
             if is_liger_kernel_available():
                 if mask_ratio is not None:
-                    loss_fct = LigerFusedLinearCrossEntropyLoss(reduction="none", ignore_index=IGNORE_INDEX)
+                    loss_fct = _make_grad_ce()  # liger unless CDLM_TORCH_CE is set
                     if not get_parallel_state().sp_enabled:
                         # Shift so that tokens < n predict n
                         hidden_states = hidden_states[..., :-1, :].contiguous()
@@ -1103,7 +1175,8 @@ class Qwen2ForCausalLM(Qwen2PreTrainedModel,  MDMGenerationMixin):
                         loss_fct_all = LigerFusedLinearCrossEntropyLoss(
                             reduction="none", ignore_index=IGNORE_INDEX
                         )
-                        all_token_loss = loss_fct_all(
+                        loss_fct_all_grad = _make_grad_ce()  # liger unless CDLM_TORCH_CE is set
+                        all_token_loss = loss_fct_all_grad(
                             self.lm_head.weight,
                             hidden_states_flat,
                             casual_labels_flat,

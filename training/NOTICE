@@ -55,7 +55,9 @@ objective and supporting changes):
       Weighted cross-entropy on corrupted (noise_token_wt) and clean
       (clean_token_wt) visible tokens; confidence logging. These weights
       define the loss value; for the gradient that results with
-      liger-kernel 0.5.8, see README.md, "Effective gradient".
+      liger-kernel 0.5.8, see README.md, "Effective gradient". An opt-in
+      switch, CDLM_TORCH_CE (off by default), computes the per-token
+      cross-entropy with torch so that its gradient applies these weights.
   veomni/distributed/parallel_state.py
   veomni/distributed/sequence_parallel/comm.py
       45-minute process-group timeouts.

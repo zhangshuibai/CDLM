@@ -302,13 +302,12 @@ term (`clean_token_wt` = 0). The CDLM-0.5B checkpoint continues training `fredzz
 Nemotron-SFT-Code for 2000 steps with α = 0.1 and `noise_token_wt` = 0.1. The MDLM baseline uses the
 same setup with α = 0 and `noise_token_wt` = 0.
 
-**The 0.5B trainer's gradient is not the gradient of this loss.** With `reduction="none"`, the
-backward of liger-kernel 0.5.8's fused linear cross-entropy scales every position's gradient by the
-weight of the micro-batch's first target position. The per-token weights are therefore not
-applied, some micro-batches get zero gradient, and clean visible tokens can receive gradient through
-the noise term. All released 0.5B checkpoints were trained this way, and the logged losses are
-correct; see [training/README.md](training/README.md#effective-gradient). The LLaDA-8B LoRA and
-Sudoku trainers use torch cross-entropy and are not affected.
+**Note on the 0.5B gradient.** liger-kernel 0.5.8's fused cross-entropy, used by the 0.5B trainer,
+does not apply the per-token loss weights in its backward pass, and all released 0.5B checkpoints
+were trained with it ([details](training/README.md#effective-gradient)). `CDLM_TORCH_CE=chunked`
+trains with a correct gradient; retraining results are in
+[training/corrected_gradient](training/corrected_gradient/README.md). The LLaDA-8B LoRA and Sudoku
+trainers are not affected.
 
 ```bash
 # first request access to nvidia/Nemotron-Pretraining-SFT-v1 on the Hub and wait for NVIDIA's approval
@@ -334,6 +333,8 @@ the paper's results. The two reference models trained this way are listed under
   provenance of the released checkpoints, checkpoint conversion and evaluation.
 - [training/llada8b_lora/README.md](training/llada8b_lora/README.md): LoRA transfer to LLaDA-8B-Base
   (added in the camera-ready version, NeurIPS 2026).
+- [training/corrected_gradient/README.md](training/corrected_gradient/README.md): results of
+  retraining four 0.5B models with a corrected gradient.
 - [sudoku/README.md](sudoku/README.md): the from-scratch Sudoku comparison (Appendix F).
 
 ## Project Structure
@@ -356,6 +357,7 @@ CDLM/
 │   ├── tools/           # Checkpoint conversion to HuggingFace format
 │   ├── data_prep/       # Training-data download and verification
 │   ├── llada8b_lora/    # LLaDA-8B-Base LoRA transfer
+│   ├── corrected_gradient/  # 0.5B retraining with a corrected gradient (results)
 │   ├── tasks/           # Training entry point (train_torch.py)
 │   ├── configs/         # Training config and the resolved configs of the released runs
 │   └── veomni/          # Training framework (VeOmni / Open-dLLM, Apache-2.0)
